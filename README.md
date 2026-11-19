@@ -1,9 +1,37 @@
 # KanbanFlow
+<div align="center">
 
-A native Kanban board for macOS, built with **Swift + AppKit + WKWebView + SQLite**.
+  <img src="https://github.com/user-attachments/assets/2c920851-5e5f-48d6-8228-86e9162010af" alt="KanbanFlow Logo" width="180">
 
-The interface is a single self-contained HTML file, while the native wrapper provides the application window, database, file dialogs, and macOS integration.
+  <h2>A native Kanban board for macOS.</h2>
 
+  <p>Simple, lightweight, and entirely self-contained.</p>
+
+  <p>
+    <a href="https://github.com/ilyaivonin/kanbanflow/releases/latest">
+      <img src="https://img.shields.io/github/v/release/ilyaivonin/kanbanflow?display_name=tag&style=for-the-badge" alt="Latest Release">
+    </a>
+    <a href="https://github.com/ilyaivonin/kanbanflow/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/ilyaivonin/kanbanflow?style=for-the-badge" alt="License">
+    </a>
+    <img src="https://img.shields.io/badge/macOS-12%2B-black?style=for-the-badge&logo=apple" alt="macOS 12+">
+    <img src="https://img.shields.io/badge/Swift-AppKit-orange?style=for-the-badge&logo=swift" alt="Swift + AppKit">
+    <img src="https://img.shields.io/badge/SQLite-Database-blue?style=for-the-badge&logo=sqlite" alt="SQLite">
+  </p>
+
+  <br>
+
+  <a href="https://github.com/ilyaivonin/kanbanflow/releases/latest">
+    <img src="https://img.shields.io/badge/DOWNLOAD-RELEASE%201.0-2ea44f?style=for-the-badge" alt="Download Release 1.0">
+  </a>
+
+  <br><br>
+
+  <sub>Built with Swift · AppKit · WKWebView · SQLite</sub>
+
+</div>
+
+---
 **English version:** [README.md](README.md) · **Build instructions:** [BUILD.md](BUILD.md)
 
 <div align="center">
@@ -13,7 +41,6 @@ The interface is a single self-contained HTML file, while the native wrapper pro
   <img width="49%" alt="Screenshot 4" src="https://github.com/user-attachments/assets/89dc50ee-cd55-479d-87ea-24bcb67189fa" />
   <img width="49%" alt="Screenshot 5" src="https://github.com/user-attachments/assets/ae653fa8-8df1-4842-97fc-7953ab5612c4" />
 </div>
----
 
 ## Architecture
 
