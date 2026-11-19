@@ -6,6 +6,13 @@ The interface is a single self-contained HTML file, while the native wrapper pro
 
 **English version:** [README.md](README.md) · **Build instructions:** [BUILD.md](BUILD.md)
 
+<div align="center">
+  <img width="49%" alt="Screenshot 1" src="https://github.com/user-attachments/assets/fea6941f-310f-49c0-9a28-9d96bb1ba412" />
+  <img width="49%" alt="Screenshot 2" src="https://github.com/user-attachments/assets/4ff048d3-8e70-49e6-b12e-0c5e100696c4" />
+  <img width="49%" alt="Screenshot 3" src="https://github.com/user-attachments/assets/02829863-2d29-4f5b-8387-40252594f335" />
+  <img width="49%" alt="Screenshot 4" src="https://github.com/user-attachments/assets/89dc50ee-cd55-479d-87ea-24bcb67189fa" />
+  <img width="49%" alt="Screenshot 5" src="https://github.com/user-attachments/assets/ae653fa8-8df1-4842-97fc-7953ab5612c4" />
+</div>
 ---
 
 ## Architecture
