@@ -61,6 +61,7 @@ If the same `kanban.html` file is opened directly in a browser, the bridge is un
 - **Column management** — Duplicate a column (with all its cards) using the copy icon in its header, and drag columns by their header to reorder them. The order is saved to the database. Columns can also be dropped on either side of a date divider (left half = before the line, right half = after it), and a divider can be added after the last column using the "+" handle before "+ Add Column".
 - **Finish button** — Every card has a checkmark button. On first use you choose one or more completion columns (for example Done), then pick where to move the card. Later presses offer only the previously chosen columns. The choice can be changed in Settings. Completed cards show a green checkmark on the board, in Projects, and in the calendar.
 - **Click a calendar day** to create a new task with that date prefilled.
+- **No duplicate calendar entries** — Cards with the same title, description and duration are shown only once per day, even if several such cards exist or the task spans multiple days.
 - **Date ranges** — A start date and an optional end date. Overdue status is determined by the end date. The calendar displays every day within the range, and dragging a card preserves its duration.
 - **Three views** — Board, calendar, and project tiles.
 - **Search and filters** by tag, priority, and assignee.

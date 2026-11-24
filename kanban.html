@@ -5187,6 +5187,20 @@ html, body {
             showAddCalendarCardModal(dateKey);
         }
 
+        // Cards with the same title, description and duration are the same task
+        // repeated, so the calendar shows them only once per day.
+        function calendarCardSignature(card) {
+            const title = String(card.title || '').trim().toLowerCase();
+            const description = String(card.description || '').trim().toLowerCase();
+            let duration = 0;
+            if (card.dueDate) {
+                const end = (card.dueDateEnd && card.dueDateEnd !== card.dueDate)
+                    ? card.dueDateEnd : card.dueDate;
+                duration = Math.max(0, daysBetweenKeys(card.dueDate, end));
+            }
+            return title + '\u0001' + description + '\u0001' + duration;
+        }
+
         function renderCalendar() {
             const container = document.getElementById('calendarView');
             const board = getBoard();
@@ -5223,15 +5237,22 @@ html, body {
             });
 
             const tasksByDate = {};
+            const seenByDate = {};      // dateKey -> { signature: true }
             const undated = [];
+            const seenUndated = {};
             entries.forEach(function(entry) {
+                const signature = calendarCardSignature(entry.card);
                 const due = entry.card.dueDate ? String(entry.card.dueDate).slice(0, 10) : '';
                 if (!due) {
-                    undated.push(entry);
+                    if (!seenUndated[signature]) {
+                        seenUndated[signature] = true;
+                        undated.push(entry);
+                    }
                     return;
                 }
                 const end = entry.card.dueDateEnd ? String(entry.card.dueDateEnd).slice(0, 10) : '';
                 const days = eachRangeDay(due, end);
+                if (!seenByDate[due]) seenByDate[due] = {};
                 days.forEach(function(dayKey, index) {
                     let rangePos = '';
                     if (days.length > 1) {
@@ -5240,6 +5261,9 @@ html, body {
                         else rangePos = 'mid';
                     }
                     if (!tasksByDate[dayKey]) tasksByDate[dayKey] = [];
+                    if (!seenByDate[dayKey]) seenByDate[dayKey] = {};
+                    if (seenByDate[dayKey][signature]) return;
+                    seenByDate[dayKey][signature] = true;
                     tasksByDate[dayKey].push({ card: entry.card, column: entry.column, rangePos: rangePos });
                 });
             });
