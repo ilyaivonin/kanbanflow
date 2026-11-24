@@ -58,6 +58,9 @@ If the same `kanban.html` file is opened directly in a browser, the bridge is un
 - **Undo actions** — The **Undo** button in the header or `Cmd+Z` reverses the most recent change. History is stored in memory and supports up to 50 steps per session.
 - **Multiple boards** with a dropdown switcher, board creation, and deletion.
 - **Columns and cards** with drag-and-drop between columns, colored labeled separators, tags, priorities, assignees, descriptions, and subtasks.
+- **Column management** — Duplicate a column (with all its cards) using the copy icon in its header, and drag columns by their header to reorder them. The order is saved to the database.
+- **Finish button** — Every card has a checkmark button. On first use you choose one or more completion columns (for example Done), then pick where to move the card. Later presses offer only the previously chosen columns. The choice can be changed in Settings. Completed cards show a green checkmark on the board, in Projects, and in the calendar.
+- **Click a calendar day** to create a new task with that date prefilled.
 - **Date ranges** — A start date and an optional end date. Overdue status is determined by the end date. The calendar displays every day within the range, and dragging a card preserves its duration.
 - **Three views** — Board, calendar, and project tiles.
 - **Search and filters** by tag, priority, and assignee.
@@ -126,14 +129,14 @@ Database structure:
 | --- | --- |
 | `app_state` | Authoritative JSON snapshot loaded by the interface |
 | `boards`, `columns`, `cards`, `separators` | Normalized representation of the same data |
-| `settings` | Application name and other key-value settings |
+| `settings` | Application name, completion columns, and other key-value settings |
 | `backups` | The last 20 snapshots created during export/import operations |
 
 **Settings → Reveal Database** opens the database location in Finder. The same section also displays the number of records and the database file size.
 
 ### Full Backup and Individual Boards
 
-- **Export Full Backup (JSON)** saves all boards, cards, separators, theme, ordering, and application name.
+- **Export Full Backup (JSON)** saves all boards, cards, separators, theme, ordering, completion columns, and application name.
 - **Import Backup (JSON)** replaces the database contents with data from the selected file. Before replacement, the current state is saved to the `backups` table.
 - **Export Current Board** saves a single board.
 - **Import Board** adds a board from a file and switches to it.
