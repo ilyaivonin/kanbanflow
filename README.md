@@ -58,7 +58,7 @@ If the same `kanban.html` file is opened directly in a browser, the bridge is un
 - **Undo actions** — The **Undo** button in the header or `Cmd+Z` reverses the most recent change. History is stored in memory and supports up to 50 steps per session.
 - **Multiple boards** with a dropdown switcher, board creation, and deletion.
 - **Columns and cards** with drag-and-drop between columns, colored labeled separators, tags, priorities, assignees, descriptions, and subtasks.
-- **Column management** — Duplicate a column (with all its cards) using the copy icon in its header, and drag columns by their header to reorder them. The order is saved to the database.
+- **Column management** — Duplicate a column (with all its cards) using the copy icon in its header, and drag columns by their header to reorder them. The order is saved to the database. Columns can also be dropped on either side of a date divider (left half = before the line, right half = after it), and a divider can be added after the last column using the "+" handle before "+ Add Column".
 - **Finish button** — Every card has a checkmark button. On first use you choose one or more completion columns (for example Done), then pick where to move the card. Later presses offer only the previously chosen columns. The choice can be changed in Settings. Completed cards show a green checkmark on the board, in Projects, and in the calendar.
 - **Click a calendar day** to create a new task with that date prefilled.
 - **Date ranges** — A start date and an optional end date. Overdue status is determined by the end date. The calendar displays every day within the range, and dragging a card preserves its duration.

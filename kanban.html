@@ -1404,9 +1404,26 @@
             border-color: var(--accent);
         }
 
+        .complete-option.selected {
+            border-color: var(--accent);
+            background: rgba(74,144,217,0.14);
+            box-shadow: inset 0 0 0 1px var(--accent);
+        }
+
         .complete-option input {
             accent-color: var(--accent);
             cursor: pointer;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
+        }
+
+        .date-separator.drop-target .date-separator-line {
+            box-shadow: 0 0 0 3px var(--accent);
+        }
+
+        .date-separator.drop-target .date-separator-label {
+            border-width: 2px;
         }
 
         .column-placeholder {
@@ -4135,7 +4152,13 @@ html, body {
             showToast('Completion removed', 'info');
         }
 
-        var COMPLETE_MODAL = { cardId: null, firstTime: false };
+        var COMPLETE_MODAL = { cardId: null, firstTime: false, target: null };
+
+        function selectCompleteOption(el, columnId) {
+            COMPLETE_MODAL.target = columnId;
+            document.querySelectorAll('.complete-option').forEach(function(o) { o.classList.remove('selected'); });
+            if (el) el.classList.add('selected');
+        }
 
         function updateCompleteTargets() {
             const select = document.getElementById('completeTarget');
@@ -4165,6 +4188,7 @@ html, body {
 
             COMPLETE_MODAL.cardId = cardId;
             COMPLETE_MODAL.firstTime = firstTime;
+            COMPLETE_MODAL.target = null;
 
             document.getElementById('modalTitle').textContent = card.completed ? 'Completed task' : 'Complete task';
 
@@ -4179,10 +4203,10 @@ html, body {
                         <div class="settings-hint">Tick the columns a completed task may be moved to (for example Done). You can change this later in Settings.</div>
                         <div id="completeColumnChecks">
                             ${ordered.map(function(cid) {
-                                return '<label class="complete-option">' +
+                                return '<label class="complete-option' + (defaults.indexOf(cid) !== -1 ? ' selected' : '') + '">' +
                                     '<input type="checkbox" class="complete-col-check" value="' + cid + '"' +
                                     (defaults.indexOf(cid) !== -1 ? ' checked' : '') +
-                                    ' onchange="updateCompleteTargets()">' +
+                                    ' onchange="updateCompleteTargets(); this.parentNode.classList.toggle(\'selected\', this.checked);">' +
                                     '<span>' + escapeHtml(board.columns[cid].title) + '</span></label>';
                             }).join('')}
                         </div>
@@ -4200,7 +4224,8 @@ html, body {
                         <div class="settings-hint">Only the columns selected earlier or in Settings are shown.</div>
                         <div id="completeColumnChecks">
                             ${configured.map(function(cid) {
-                                return '<label class="complete-option">' +
+                                return '<label class="complete-option' + (cid === current ? ' selected' : '') + '"' +
+                                    ' onclick="selectCompleteOption(this, \'' + cid + '\')">' +
                                     '<input type="radio" name="completeTarget" value="' + cid + '"' +
                                     (cid === current ? ' checked' : '') + '>' +
                                     '<span>' + escapeHtml(board.columns[cid].title) + '</span></label>';
@@ -4243,11 +4268,11 @@ html, body {
                 if (chosen.indexOf(target) === -1) target = chosen[0];
             } else {
                 const selected = document.querySelector('input[name="completeTarget"]:checked');
-                if (!selected) {
-                    showToast('Select a target column', 'error');
+                target = COMPLETE_MODAL.target || (selected ? selected.value : null);
+                if (!target) {
+                    showToast('Выберите колонку, затем нажмите «Complete»', 'error');
                     return;
                 }
-                target = selected.value;
             }
 
             closeModal();
@@ -4702,9 +4727,12 @@ html, body {
                 `;
             });
 
+            // A divider can also be added after the last column, before "+ Add Column".
+            html += renderSeparatorHandle('end');
+
             separators.filter(function(s) { return s.before === 'end'; }).forEach(function(sep) {
-                html += renderAddColumnSpot('end');
                 html += renderSeparatorElement(sep);
+                html += renderAddColumnSpot('end');
             });
 
             html += `
@@ -5843,6 +5871,14 @@ html, body {
                 col.addEventListener('dragleave', onColumnReorderDragLeave);
                 col.addEventListener('drop', onColumnReorderDrop);
             });
+
+            // A column can also be dropped directly on a date separator:
+            // left half = before the line, right half = after the line.
+            document.querySelectorAll('.date-separator[data-separator-id]').forEach(function(sep) {
+                sep.addEventListener('dragover', onSeparatorReorderDragOver);
+                sep.addEventListener('dragleave', onSeparatorReorderDragLeave);
+                sep.addEventListener('drop', onSeparatorReorderDrop);
+            });
         }
 
         function onCardDragStart(e) {
@@ -5931,6 +5967,7 @@ html, body {
             const col = closestElement(e.target, '.column');
             if (col) col.classList.remove('drag-column');
             document.querySelectorAll('.column.dragging-over').forEach(function(c) { c.classList.remove('dragging-over'); });
+            document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
             document.querySelectorAll('.column-placeholder').forEach(function(p) { if (p.parentNode) p.parentNode.removeChild(p); });
             APP.draggingColumn = null;
         }
@@ -5946,6 +5983,7 @@ html, body {
             const rect = col.getBoundingClientRect();
             const before = e.clientX < rect.left + rect.width / 2;
             document.querySelectorAll('.column').forEach(function(c) { c.classList.remove('dragging-over'); });
+            document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
             col.classList.add('dragging-over');
             col.dataset.dropBefore = before ? 'true' : 'false';
         }
@@ -5992,6 +6030,88 @@ html, body {
             saveData();
             renderBoard();
             showToast('Column order updated', 'info');
+        }
+
+        function onSeparatorReorderDragOver(e) {
+            if (!APP.draggingColumn || APP.draggingCard) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            const sep = closestElement(e.target, '.date-separator[data-separator-id]');
+            if (!sep) return;
+            const rect = sep.getBoundingClientRect();
+            const before = e.clientX < rect.left + rect.width / 2;
+
+            document.querySelectorAll('.column.dragging-over').forEach(function(c) { c.classList.remove('dragging-over'); });
+            document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+            sep.classList.add('drop-target');
+            sep.dataset.dropBefore = before ? 'true' : 'false';
+        }
+
+        function onSeparatorReorderDragLeave(e) {
+            const sep = closestElement(e.target, '.date-separator[data-separator-id]');
+            if (sep && !sep.contains(e.relatedTarget)) sep.classList.remove('drop-target');
+        }
+
+        function onSeparatorReorderDrop(e) {
+            if (!APP.draggingColumn || APP.draggingCard) return;
+            const sepEl = closestElement(e.target, '.date-separator[data-separator-id]');
+            if (!sepEl) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const board = getBoard();
+            if (!board) return;
+            const dragId = APP.draggingColumn;
+            if (!board.columns[dragId]) return;
+
+            const sepId = sepEl.dataset.separatorId;
+            const sep = (board.separators || []).filter(function(s) { return s.id === sepId; })[0];
+            if (!sep) return;
+
+            const targetId = sep.before;              // column the line precedes, or 'end'
+            const beforeLine = sepEl.dataset.dropBefore === 'true';
+            const visible = APP.columnOrder.filter(function(id) { return board.columns[id]; });
+            const hidden = APP.columnOrder.filter(function(id) { return !board.columns[id]; });
+            const current = visible.indexOf(dragId);
+            if (current === -1) return;
+
+            const order = visible.slice();
+
+            // Dropping the column the line is already attached to: the column
+            // stays put, only the side of the line changes.
+            if (targetId === dragId) {
+                if (beforeLine) {
+                    const next = order[current + 1];
+                    sep.before = next || 'end';
+                }
+                APP.columnOrder = order.concat(hidden);
+                document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                saveData();
+                renderBoard();
+                showToast('Divider moved relative to column', 'info');
+                return;
+            }
+
+            order.splice(current, 1);
+
+            let insertAt = targetId === 'end' ? order.length : order.indexOf(targetId);
+            if (insertAt === -1) insertAt = order.length;
+            order.splice(insertAt, 0, dragId);
+
+            // Left of the line: column goes before the divider.
+            // Right of the line: the divider moves with the column (stays before it).
+            if (!beforeLine) sep.before = dragId;
+
+            order.forEach(function(id, index) {
+                if (board.columns[id]) board.columns[id].order = index;
+            });
+            APP.columnOrder = order.concat(hidden);
+
+            document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+            saveData();
+            renderBoard();
+            showToast('Column moved relative to divider', 'info');
         }
 
         // ==================== EVENT HANDLERS ====================
