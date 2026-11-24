@@ -21,6 +21,7 @@
             --info: #4a90d9;
             --border: rgba(255,255,255,0.08);
             --shadow: rgba(0,0,0,0.3);
+            --ui-opacity: 1;
             --column-radius: 10px;
             --card-radius: 8px;
             --transition: 0.3s ease;
@@ -78,6 +79,11 @@
             color: var(--text-primary);
             min-height: 100vh;
             transition: background var(--transition), color var(--transition);
+        }
+
+        body > *:not(.modal-overlay):not(.toast-container):not(.date-picker-popover) {
+            opacity: var(--ui-opacity);
+            transition: opacity var(--transition);
         }
 
         /* ==================== SCROLLBAR ==================== */
@@ -1524,6 +1530,59 @@
             color: var(--text-secondary);
             line-height: 1.5;
             margin-top: 6px;
+        }
+
+        .card-checklist {
+            margin-top: 6px;
+        }
+
+        .card-checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            cursor: pointer;
+        }
+
+        .card-checklist-item input {
+            margin-top: 1px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .card-checklist-item.done span {
+            text-decoration: line-through;
+            opacity: 0.65;
+        }
+
+        .card-checklist-more {
+            font-size: 11px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+            padding-left: 20px;
+        }
+
+        .desc-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .desc-tool-btn {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .desc-tool-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
         }
 
         .card-meta {
@@ -3309,6 +3368,8 @@ html, body {
             draggingColumn: null,
             columnOrder: ['todo', 'progress', 'review', 'done'],
             completionColumns: [],
+            completionColumnNames: [],
+            uiOpacity: 1,
             boards: {}
         };
 
@@ -3557,6 +3618,7 @@ html, body {
         // ==================== INITIALIZATION ====================
         function init() {
             loadData();
+            applyUiOpacity();
             renderBoard();
             setupEventListeners();
             setupKeyboardShortcuts();
@@ -3598,6 +3660,12 @@ html, body {
                 APP.completionColumns = Array.isArray(parsed.settings && parsed.settings.completionColumns)
                     ? parsed.settings.completionColumns.slice(0)
                     : (Array.isArray(parsed.completionColumns) ? parsed.completionColumns.slice(0) : []);
+                APP.completionColumnNames = Array.isArray(parsed.settings && parsed.settings.completionColumnNames)
+                    ? parsed.settings.completionColumnNames.slice(0)
+                    : (Array.isArray(parsed.completionColumnNames) ? parsed.completionColumnNames.slice(0) : []);
+                APP.uiOpacity = (parsed.settings && typeof parsed.settings.uiOpacity === 'number')
+                    ? parsed.settings.uiOpacity
+                    : (typeof parsed.uiOpacity === 'number' ? parsed.uiOpacity : 1);
 
                 if (Array.isArray(parsed.columnOrder) && parsed.columnOrder.length) {
                     const known = {};
@@ -3627,6 +3695,7 @@ html, body {
             }
 
             document.body.setAttribute('data-theme', APP.currentTheme);
+            applyUiOpacity();
             applyAppName(APP.appName, false);
             saveData();
         }
@@ -3652,14 +3721,39 @@ html, body {
                 });
             });
 
-            // Completion columns are global, but only columns that still exist
-            // may remain selected.
-            const knownColumns = {};
+            // Completion targets are stored as column names (not IDs) so copied
+            // columns like "Done (copy)" do not explode the list. Migrate legacy IDs.
+            const allColumnNames = {};
+            const idToName = {};
             Object.keys(APP.boards).forEach(function(boardId) {
-                Object.keys(APP.boards[boardId].columns || {}).forEach(function(colId) { knownColumns[colId] = true; });
+                Object.keys(APP.boards[boardId].columns || {}).forEach(function(colId) {
+                    const name = String(APP.boards[boardId].columns[colId].title || '').trim();
+                    if (name) allColumnNames[name.toLowerCase()] = name;
+                    idToName[colId] = name;
+                });
             });
-            if (!Array.isArray(APP.completionColumns)) APP.completionColumns = [];
-            APP.completionColumns = APP.completionColumns.filter(function(id) { return !!knownColumns[id]; });
+            if (!Array.isArray(APP.completionColumnNames)) APP.completionColumnNames = [];
+            if (APP.completionColumnNames.length === 0 && Array.isArray(APP.completionColumns) && APP.completionColumns.length) {
+                APP.completionColumnNames = APP.completionColumns.map(function(id) {
+                    return idToName[id] || '';
+                }).filter(Boolean);
+            }
+            // Dedupe case-insensitively and keep only names that exist somewhere.
+            const deduped = [];
+            const seenNames = {};
+            APP.completionColumnNames.forEach(function(name) {
+                const clean = String(name || '').trim();
+                const key = clean.toLowerCase();
+                if (!clean || seenNames[key]) return;
+                if (Object.keys(allColumnNames).length && !allColumnNames[key]) return;
+                seenNames[key] = true;
+                deduped.push(allColumnNames[key] || clean);
+            });
+            APP.completionColumnNames = deduped;
+            // Keep legacy IDs in sync for old code paths / backups.
+            APP.completionColumns = [];
+            if (APP.uiOpacity === undefined || APP.uiOpacity === null || isNaN(APP.uiOpacity)) APP.uiOpacity = 1;
+            APP.uiOpacity = Math.max(0.5, Math.min(1, Number(APP.uiOpacity)));
         }
 
         function buildStateSnapshot() {
@@ -3673,7 +3767,9 @@ html, body {
                 columnOrder: APP.columnOrder,
                 settings: {
                     appName: APP.appName || 'KanbanFlow',
-                    completionColumns: (APP.completionColumns || []).slice(0)
+                    completionColumns: (APP.completionColumns || []).slice(0),
+                    completionColumnNames: (APP.completionColumnNames || []).slice(0),
+                    uiOpacity: typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1
                 },
                 lastModified: new Date().toISOString()
             };
@@ -3738,6 +3834,12 @@ html, body {
                 APP.completionColumns = Array.isArray(snapshot.settings && snapshot.settings.completionColumns)
                     ? snapshot.settings.completionColumns.slice(0)
                     : (Array.isArray(snapshot.completionColumns) ? snapshot.completionColumns.slice(0) : []);
+                APP.completionColumnNames = Array.isArray(snapshot.settings && snapshot.settings.completionColumnNames)
+                    ? snapshot.settings.completionColumnNames.slice(0)
+                    : (Array.isArray(snapshot.completionColumnNames) ? snapshot.completionColumnNames.slice(0) : []);
+                APP.uiOpacity = (snapshot.settings && typeof snapshot.settings.uiOpacity === 'number')
+                    ? snapshot.settings.uiOpacity
+                    : (typeof snapshot.uiOpacity === 'number' ? snapshot.uiOpacity : 1);
 
                 normalizeAllBoards();
                 document.body.setAttribute('data-theme', APP.currentTheme);
@@ -3823,6 +3925,12 @@ html, body {
         }
 
         // ==================== APP NAME ====================
+        function applyUiOpacity() {
+            const v = Math.max(0.5, Math.min(1, Number(APP.uiOpacity) || 1));
+            APP.uiOpacity = v;
+            document.documentElement.style.setProperty('--ui-opacity', String(v));
+        }
+
         function applyAppName(name, persist) {
             const clean = (name || '').trim() || 'KanbanFlow';
             APP.appName = clean;
@@ -4088,23 +4196,64 @@ html, body {
             showToast('Column duplicated', 'success');
         }
 
-        function getCompletionColumns() {
+        function getCompletionColumnNames() {
+            if (Array.isArray(APP.completionColumnNames) && APP.completionColumnNames.length) {
+                return APP.completionColumnNames.slice(0);
+            }
+            // Legacy fallback (IDs).
             const board = getBoard();
             if (!board) return [];
-            return (APP.completionColumns || []).filter(function(id) { return !!board.columns[id]; });
+            const names = [];
+            (APP.completionColumns || []).forEach(function(id) {
+                if (board.columns[id] && board.columns[id].title) names.push(board.columns[id].title);
+            });
+            return names;
         }
 
-        function defaultCompletionColumns() {
+        function resolveCompletionColumnId(nameOrId) {
+            const board = getBoard();
+            if (!board) return null;
+            if (board.columns[nameOrId]) return nameOrId;
+            const target = String(nameOrId || '').trim().toLowerCase();
+            if (!target) return null;
+            const ordered = APP.columnOrder.filter(function(id) { return board.columns[id]; });
+            for (let i = 0; i < ordered.length; i++) {
+                const id = ordered[i];
+                if (String(board.columns[id].title || '').trim().toLowerCase() === target) return id;
+            }
+            return null;
+        }
+
+        function getCompletionColumns() {
+            const names = getCompletionColumnNames();
+            const ids = [];
+            names.forEach(function(name) {
+                const id = resolveCompletionColumnId(name);
+                if (id && ids.indexOf(id) === -1) ids.push(id);
+            });
+            return ids;
+        }
+
+        function defaultCompletionColumnNames() {
             const board = getBoard();
             if (!board) return [];
             const ordered = APP.columnOrder.filter(function(id) { return board.columns[id]; });
             if (!ordered.length) return [];
-
             const matched = ordered.filter(function(id) {
                 return /done|complete|finished|готово|заверш/i.test(board.columns[id].title || '');
             });
-            if (matched.length) return matched;
-            return [ordered[ordered.length - 1]];
+            const base = matched.length ? matched : [ordered[ordered.length - 1]];
+            const names = [];
+            base.forEach(function(id) {
+                const n = String(board.columns[id].title || '').trim();
+                if (n && names.indexOf(n) === -1) names.push(n);
+            });
+            return names;
+        }
+
+        function defaultCompletionColumns() {
+            // Legacy alias: return IDs resolved from names.
+            return defaultCompletionColumnNames().map(resolveCompletionColumnId).filter(Boolean);
         }
 
         function completeCard(cardId, targetCol) {
@@ -4163,14 +4312,30 @@ html, body {
         function updateCompleteTargets() {
             const select = document.getElementById('completeTarget');
             if (!select) return;
-            const checks = document.querySelectorAll('.complete-col-check:checked');
+            const multi = document.getElementById('completeColumnNames');
             const previous = select.value;
-            let html = '';
-            for (let i = 0; i < checks.length; i++) {
-                const id = checks[i].value;
-                html += '<option value="' + id + '">' + escapeHtml(getBoard().columns[id] ? getBoard().columns[id].title : id) + '</option>';
+            let names = [];
+            if (multi) {
+                Array.prototype.forEach.call(multi.selectedOptions || [], function(o) { names.push(o.value); });
+            } else {
+                const checks = document.querySelectorAll('.complete-col-check:checked');
+                for (let i = 0; i < checks.length; i++) {
+                    const id = checks[i].value;
+                    const b = getBoard();
+                    if (b && b.columns[id]) names.push(b.columns[id].title);
+                }
             }
-            select.innerHTML = html;
+            // Dedupe by case.
+            const deduped = [];
+            const seen = {};
+            names.forEach(function(n) {
+                const k = String(n || '').toLowerCase();
+                if (k && !seen[k]) { seen[k] = true; deduped.push(n); }
+            });
+            select.innerHTML = deduped.map(function(name) {
+                const id = resolveCompletionColumnId(name);
+                return '<option value="' + escapeHtml(id || name) + '">' + escapeHtml(name) + '</option>';
+            }).join('');
             if (previous && Array.prototype.some.call(select.options, function(o) { return o.value === previous; })) {
                 select.value = previous;
             }
@@ -4182,9 +4347,17 @@ html, body {
 
             const card = result.card;
             const board = getBoard();
-            const configured = getCompletionColumns();
-            const firstTime = configured.length === 0;
+            const configuredNames = getCompletionColumnNames();
+            const configured = configuredNames.map(resolveCompletionColumnId).filter(Boolean);
+            const firstTime = configuredNames.length === 0;
             const ordered = APP.columnOrder.filter(function(id) { return board.columns[id]; });
+            const availableNames = [];
+            const seenNames = {};
+            ordered.forEach(function(id) {
+                const n = String(board.columns[id].title || '').trim();
+                const k = n.toLowerCase();
+                if (n && !seenNames[k]) { seenNames[k] = true; availableNames.push(n); }
+            });
 
             COMPLETE_MODAL.cardId = cardId;
             COMPLETE_MODAL.firstTime = firstTime;
@@ -4196,20 +4369,18 @@ html, body {
                 escapeHtml(card.title) + '</div>';
 
             if (firstTime) {
-                const defaults = defaultCompletionColumns();
+                const defaults = defaultCompletionColumnNames();
                 body += `
                     <div class="detail-section">
                         <div class="detail-section-title">Completion columns</div>
-                        <div class="settings-hint">Tick the columns a completed task may be moved to (for example Done). You can change this later in Settings.</div>
-                        <div id="completeColumnChecks">
-                            ${ordered.map(function(cid) {
-                                return '<label class="complete-option' + (defaults.indexOf(cid) !== -1 ? ' selected' : '') + '">' +
-                                    '<input type="checkbox" class="complete-col-check" value="' + cid + '"' +
-                                    (defaults.indexOf(cid) !== -1 ? ' checked' : '') +
-                                    ' onchange="updateCompleteTargets(); this.parentNode.classList.toggle(\'selected\', this.checked);">' +
-                                    '<span>' + escapeHtml(board.columns[cid].title) + '</span></label>';
+                        <div class="settings-hint">Select column names for completion (e.g. Done, Undone). Copy columns with same name are treated as one option. You can change this later in Settings.</div>
+                        <select class="detail-input" id="completeColumnNames" multiple size="6" style="min-height:120px;">
+                            ${availableNames.map(function(name) {
+                                const checked = defaults.some(function(d) { return d.toLowerCase() === name.toLowerCase(); });
+                                return '<option value="' + escapeHtml(name) + '"' + (checked ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
                             }).join('')}
-                        </div>
+                        </select>
+                        <div class="settings-hint" style="margin-top:6px;">Hold Cmd/Ctrl to select several.</div>
                     </div>
                     <div class="detail-section">
                         <div class="detail-section-title">Move this task to</div>
@@ -4217,20 +4388,18 @@ html, body {
                     </div>
                 `;
             } else {
-                const current = configured.indexOf(result.column) !== -1 ? result.column : configured[0];
+                const currentId = configured.indexOf(result.column) !== -1 ? result.column : configured[0];
+                const currentName = currentId && board.columns[currentId] ? board.columns[currentId].title : configuredNames[0];
                 body += `
                     <div class="detail-section">
                         <div class="detail-section-title">Move this task to</div>
-                        <div class="settings-hint">Only the columns selected earlier or in Settings are shown.</div>
-                        <div id="completeColumnChecks">
-                            ${configured.map(function(cid) {
-                                return '<label class="complete-option' + (cid === current ? ' selected' : '') + '"' +
-                                    ' onclick="selectCompleteOption(this, \'' + cid + '\')">' +
-                                    '<input type="radio" name="completeTarget" value="' + cid + '"' +
-                                    (cid === current ? ' checked' : '') + '>' +
-                                    '<span>' + escapeHtml(board.columns[cid].title) + '</span></label>';
+                        <div class="settings-hint">Only completion column names selected earlier or in Settings are shown.</div>
+                        <select class="detail-input" id="completeTargetName">
+                            ${configuredNames.map(function(name) {
+                                const sel = String(name).toLowerCase() === String(currentName || '').toLowerCase();
+                                return '<option value="' + escapeHtml(name) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
                             }).join('')}
-                        </div>
+                        </select>
                     </div>
                 `;
             }
@@ -4255,22 +4424,34 @@ html, body {
             let target;
 
             if (COMPLETE_MODAL.firstTime) {
-                const checks = document.querySelectorAll('.complete-col-check:checked');
-                if (!checks.length) {
+                const multi = document.getElementById('completeColumnNames');
+                const chosenNames = [];
+                const seen = {};
+                if (multi) {
+                    Array.prototype.forEach.call(multi.selectedOptions || [], function(o) {
+                        const k = String(o.value || '').toLowerCase();
+                        if (k && !seen[k]) { seen[k] = true; chosenNames.push(o.value); }
+                    });
+                }
+                if (!chosenNames.length) {
                     showToast('Select at least one completion column', 'error');
                     return;
                 }
-                const chosen = [];
-                for (let i = 0; i < checks.length; i++) chosen.push(checks[i].value);
-                APP.completionColumns = chosen;
+                APP.completionColumnNames = chosenNames;
+                APP.completionColumns = [];
                 const select = document.getElementById('completeTarget');
-                target = select ? select.value : chosen[0];
-                if (chosen.indexOf(target) === -1) target = chosen[0];
+                const selected = select ? select.value : '';
+                target = resolveCompletionColumnId(selected) || resolveCompletionColumnId(chosenNames[0]);
             } else {
-                const selected = document.querySelector('input[name="completeTarget"]:checked');
-                target = COMPLETE_MODAL.target || (selected ? selected.value : null);
+                const nameSelect = document.getElementById('completeTargetName');
+                const chosenName = nameSelect ? nameSelect.value : '';
+                target = resolveCompletionColumnId(chosenName);
                 if (!target) {
-                    showToast('Выберите колонку, затем нажмите «Complete»', 'error');
+                    const selected = document.querySelector('input[name="completeTarget"]:checked');
+                    target = COMPLETE_MODAL.target || (selected ? selected.value : null);
+                }
+                if (!target) {
+                    showToast('Select a target column, then press Complete', 'error');
                     return;
                 }
             }
@@ -4339,6 +4520,36 @@ html, body {
 
             closeModal();
             createCard(columnId, { title: title, label: label, dueDate: dateKey });
+        }
+
+        function cloneCard(cardId) {
+            const result = getCard(cardId);
+            if (!result) return;
+            const board = getBoard();
+            const src = result.card;
+            const columnId = result.column;
+            const stamp = new Date().toISOString();
+
+            const copy = JSON.parse(JSON.stringify(src));
+            copy.id = 'card_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            copy.completed = false;
+            delete copy.completedAt;
+            copy.createdAt = stamp;
+            copy.activity = [{ action: 'cloned', user: 'You', time: stamp, detail: 'from "' + (src.title || 'Untitled') + '"' }];
+
+            // Normalize checklist/subtasks from description on clone.
+            const sync = syncCardChecklist(copy);
+            copy.description = sync.description;
+            copy.subtasks = sync.subtasks;
+            copy.subtasksTotal = sync.subtasksTotal;
+
+            const list = board.cards[columnId];
+            const idx = list.indexOf(src);
+            list.splice(idx === -1 ? list.length : idx + 1, 0, copy);
+
+            saveData();
+            renderBoard();
+            showToast('Task cloned', 'success');
         }
 
         function createBoard(name) {
@@ -4454,6 +4665,17 @@ html, body {
             } else {
                 APP.completionColumns = [];
             }
+
+            if (Array.isArray(state.settings && state.settings.completionColumnNames)) {
+                APP.completionColumnNames = state.settings.completionColumnNames.slice(0);
+            } else if (Array.isArray(state.completionColumnNames)) {
+                APP.completionColumnNames = state.completionColumnNames.slice(0);
+            } else {
+                APP.completionColumnNames = [];
+            }
+
+            if (state.settings && typeof state.settings.uiOpacity === 'number') APP.uiOpacity = state.settings.uiOpacity;
+            else if (typeof state.uiOpacity === 'number') APP.uiOpacity = state.uiOpacity;
 
             if (Array.isArray(state.columnOrder)) {
                 const known = {};
@@ -4767,13 +4989,86 @@ html, body {
             setupTouchCardDrag();
         }
 
+        function parseChecklist(text) {
+            const lines = String(text || '').split('\n');
+            const items = [];
+            lines.forEach(function(line, index) {
+                const m = line.match(/^\s*[-*]\s*\[( |x|X)\]\s*(.*)$/);
+                if (m) items.push({ index: index, checked: m[1].toLowerCase() === 'x', text: m[2], isChecklist: true });
+            });
+            return { lines: lines, items: items };
+        }
+
+        function syncCardChecklist(card) {
+            const parsed = parseChecklist(card.description || '');
+            const description = parsed.lines.join('\n');
+            if (parsed.items.length > 0) {
+                return {
+                    description: description,
+                    subtasks: parsed.items.filter(function(i) { return i.checked; }).length,
+                    subtasksTotal: parsed.items.length
+                };
+            }
+            return {
+                description: description,
+                subtasks: card.subtasks || 0,
+                subtasksTotal: card.subtasksTotal || 0
+            };
+        }
+
+        function toggleChecklistItem(cardId, lineIndex) {
+            const result = getCard(cardId);
+            if (!result) return;
+            const card = result.card;
+            const lines = String(card.description || '').split('\n');
+            const line = lines[lineIndex];
+            if (line === undefined) return;
+            const m = line.match(/^(\s*[-*]\s*\[)( |x|X)(\]\s*.*)$/);
+            if (!m) return;
+            const checked = m[2].toLowerCase() === 'x';
+            lines[lineIndex] = m[1] + (checked ? ' ' : 'x') + m[3];
+            card.description = lines.join('\n');
+            const sync = syncCardChecklist(card);
+            card.subtasks = sync.subtasks;
+            card.subtasksTotal = sync.subtasksTotal;
+            card.activity = card.activity || [];
+            card.activity.push({ action: 'updated', user: 'You', time: new Date().toISOString(), detail: 'checklist updated' });
+            saveData();
+            renderBoard();
+        }
+
+        function renderChecklistPreview(card) {
+            const parsed = parseChecklist(card.description || '');
+            if (parsed.items.length === 0) {
+                if (card.description) {
+                    return `<div class="card-description">${escapeHtml(truncate(card.description, 60))}</div>`;
+                }
+                return '';
+            }
+            const max = 4;
+            const items = parsed.items.slice(0, max);
+            const more = parsed.items.length - items.length;
+            return `<div class="card-checklist" onclick="event.stopPropagation()">
+                ${items.map(function(item) {
+                    return `<label class="card-checklist-item ${item.checked ? 'done' : ''}">
+                        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleChecklistItem('${card.id}', ${item.index})">
+                        <span>${escapeHtml(truncate(item.text, 40) || 'Item')}</span>
+                    </label>`;
+                }).join('')}
+                ${more > 0 ? `<div class="card-checklist-more">+${more} more…</div>` : ''}
+            </div>`;
+        }
+
         function renderCard(card) {
             const isOverdue = isCardOverdue(card);
             const labelClass = card.label ? `label-${card.label}` : '';
             const priorityClass = card.priority ? `priority-${card.priority}` : '';
             const hasRange = !!(card.dueDate && card.dueDateEnd && card.dueDateEnd !== card.dueDate);
 
-            const progressPercent = card.subtasksTotal > 0 ? (card.subtasks / card.subtasksTotal) * 100 : 0;
+            const sync = syncCardChecklist(card);
+            const subtasks = sync.subtasks;
+            const subtasksTotal = sync.subtasksTotal;
+            const progressPercent = subtasksTotal > 0 ? (subtasks / subtasksTotal) * 100 : 0;
 
             return `
                 <div class="card ${card.id}${card.label ? ' card-tint-' + card.label : ''}" draggable="true" data-card-id="${card.id}">
@@ -4795,6 +5090,12 @@ html, body {
                                     <circle cx="12" cy="12" r="4"/>
                                 </svg>
                             </button>
+                            <button class="card-action-btn" onclick="cloneCard('${card.id}')" title="Clone task">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="4" y="4" width="8" height="8" rx="1"/>
+                                    <rect x="8" y="8" width="8" height="8" rx="1"/>
+                                </svg>
+                            </button>
                             <button class="card-action-btn" onclick="deleteCard('${card.id}')" title="Delete">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                     <path d="M18 6L6 18M6 6l12 12"/>
@@ -4803,7 +5104,7 @@ html, body {
                         </div>
                     </div>
                     <div class="card-title">${escapeHtml(card.title)}</div>
-                    ${card.description ? `<div class="card-description">${escapeHtml(truncate(card.description, 60))}</div>` : ''}
+                    ${renderChecklistPreview(card)}
                     ${card.dueDate ? `<div class="card-due ${isOverdue ? 'overdue' : ''} ${hasRange ? 'range' : ''}">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -4814,11 +5115,11 @@ html, body {
                         <span>${card.dueDate}</span>
                         ${hasRange ? `<span class="due-arrow">→</span><span>${card.dueDateEnd}</span>` : ''}
                     </div>` : ''}
-                    ${card.subtasksTotal > 0 ? `<div style="margin-top:6px;">
+                    ${subtasksTotal > 0 ? `<div style="margin-top:6px;">
                         <div style="height:4px;background:var(--border);border-radius:2px;">
                             <div style="height:100%;width:${progressPercent}%;background:var(--accent);border-radius:2px;"></div>
                         </div>
-                        <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">${card.subtasks}/${card.subtasksTotal} tasks</div>
+                        <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">${subtasks}/${subtasksTotal} tasks</div>
                     </div>` : ''}
                     <div class="card-footer">
                         ${card.assignee ? `<div style="display:flex;align-items:center;gap:4px;">
@@ -6291,7 +6592,11 @@ html, body {
                 </div>
                 <div class="detail-section">
                     <div class="detail-label">Description</div>
-                    <textarea class="detail-textarea" id="detailDesc">${escapeHtml(card.description || '')}</textarea>
+                    <div class="desc-toolbar">
+                        <button type="button" class="desc-tool-btn" onclick="addChecklistLine('detailDesc')">+ Checklist item</button>
+                        <span class="settings-hint" style="margin:0;">Each line becomes a checklist item with a checkbox.</span>
+                    </div>
+                    <textarea class="detail-textarea" id="detailDesc" placeholder="- [ ] First task&#10;- [ ] Second task">${escapeHtml(card.description || '')}</textarea>
                 </div>
                 <div class="detail-row">
                     <div class="detail-field">
@@ -6334,12 +6639,8 @@ html, body {
                 </div>
                 <div class="detail-row">
                     <div class="detail-field">
-                        <div class="detail-label">Subtasks</div>
-                        <div style="display:flex;gap:4px;">
-                            <input type="number" class="form-input" id="detailSubtasks" value="${card.subtasks || 0}" min="0">
-                            <span style="line-height:32px;">/</span>
-                            <input type="number" class="form-input" id="detailSubtasksTotal" value="${card.subtasksTotal || 0}" min="0">
-                        </div>
+                        <div class="detail-label">Subtasks (auto from checklist)</div>
+                        <div style="font-size:13px;color:var(--text-secondary);padding:6px 0;" id="detailSubtasksInfo">${(syncCardChecklist(card).subtasks || 0)}/${(syncCardChecklist(card).subtasksTotal || 0)}</div>
                     </div>
                     <div class="detail-field">
                         <div class="detail-label">Move to Column</div>
@@ -6358,6 +6659,18 @@ html, body {
             `;
 
             showModal();
+            setTimeout(function() {
+                var ta = document.getElementById('detailDesc');
+                var info = document.getElementById('detailSubtasksInfo');
+                if (ta && info) {
+                    var update = function() {
+                        var s = syncCardChecklist({ description: ta.value, subtasks: 0, subtasksTotal: 0 });
+                        info.textContent = s.subtasks + '/' + s.subtasksTotal;
+                    };
+                    ta.addEventListener('input', update);
+                    update();
+                }
+            }, 50);
         }
 
         function saveCardDetail(cardId, colId) {
@@ -6368,8 +6681,6 @@ html, body {
             const dueDate = document.getElementById('detailDueDate').value;
             const dueDateEnd = document.getElementById('detailDueDateEnd').value;
             const assignee = document.getElementById('detailAssignee').value.trim();
-            const subtasks = parseInt(document.getElementById('detailSubtasks').value) || 0;
-            const subtasksTotal = parseInt(document.getElementById('detailSubtasksTotal').value) || 0;
             const moveTo = document.getElementById('detailMoveTo').value;
 
             if (dueDateEnd && !dueDate) {
@@ -6381,16 +6692,17 @@ html, body {
                 return;
             }
 
+            const checklistSync = syncCardChecklist({ description: desc, subtasks: 0, subtasksTotal: 0 });
             const updates = {
                 title,
-                description: desc,
+                description: checklistSync.description,
                 label,
                 priority,
                 dueDate,
                 dueDateEnd,
                 assignee,
-                subtasks,
-                subtasksTotal
+                subtasks: checklistSync.subtasks,
+                subtasksTotal: checklistSync.subtasksTotal
             };
 
             updateCard(cardId, updates);
@@ -6401,6 +6713,16 @@ html, body {
 
             closeModal();
             showToast('Card updated', 'success');
+        }
+
+        function addChecklistLine(textareaId) {
+            const ta = document.getElementById(textareaId);
+            if (!ta) return;
+            const val = ta.value || '';
+            const prefix = val && !val.endsWith('\n') ? '\n' : '';
+            ta.value = val + prefix + '- [ ] ';
+            ta.focus();
+            ta.selectionStart = ta.selectionEnd = ta.value.length;
         }
 
         function showModal() {
@@ -6860,7 +7182,13 @@ html, body {
         function showSettingsModal() {
             const board = getBoard();
             const ordered = board ? APP.columnOrder.filter(function(id) { return board.columns[id]; }) : [];
-            const selected = getCompletionColumns();
+            const availableNames = [];
+            const seenNames = {};
+            ordered.forEach(function(id) {
+                const n = String(board.columns[id].title || '').trim();
+                const k = n.toLowerCase();
+                if (n && !seenNames[k]) { seenNames[k] = true; availableNames.push(n); }
+            });
 
             document.getElementById('modalTitle').textContent = 'Settings';
             document.getElementById('modalBody').innerHTML = `
@@ -6870,15 +7198,21 @@ html, body {
                     <div class="settings-hint">Shown in the header, the macOS window title and exported backups.</div>
                 </div>
                 <div class="settings-section">
+                    <div class="settings-title">Interface transparency</div>
+                    <div class="settings-hint">Adjust overall UI opacity. 100% is fully opaque.</div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="range" class="detail-input" id="settingsUiOpacity" min="50" max="100" step="1" value="${Math.round((typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1) * 100)}" style="flex:1;">
+                        <span id="settingsUiOpacityValue" style="min-width:44px;font-size:12px;color:var(--text-secondary);">${Math.round((typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1) * 100)}%</span>
+                    </div>
+                </div>
+                <div class="settings-section">
                     <div class="settings-title">Completion columns</div>
-                    <div class="settings-hint">Columns a finished task can be moved to. The Finish button offers only these.</div>
-                    ${ordered.length
-                        ? '<div id="settingsCompletionColumns">' + ordered.map(function(cid) {
-                            return '<label class="complete-option">' +
-                                '<input type="checkbox" class="settings-completion-check" value="' + cid + '"' +
-                                (selected.indexOf(cid) !== -1 ? ' checked' : '') + '>' +
-                                '<span>' + escapeHtml(board.columns[cid].title) + '</span></label>';
-                        }).join('') + '</div>'
+                    <div class="settings-hint">Column names a finished task can be moved to (e.g. Done, Undone). Same-named copied columns count as one option.</div>
+                    ${availableNames.length
+                        ? '<select class="detail-input" id="settingsCompletionNames" multiple size="6" style="min-height:120px;">' + availableNames.map(function(name) {
+                            const checked = (APP.completionColumnNames || []).some(function(n) { return String(n).toLowerCase() === name.toLowerCase(); });
+                            return '<option value="' + escapeHtml(name) + '"' + (checked ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
+                        }).join('') + '</select><div class="settings-hint" style="margin-top:6px;">Hold Cmd/Ctrl to select several.</div>'
                         : '<div class="settings-hint">Add a column first.</div>'}
                 </div>
                 <div class="settings-section">
@@ -6905,6 +7239,11 @@ html, body {
                 '<button class="btn btn-primary" onclick="saveSettingsModal()">Save Settings</button>';
 
             showModal();
+            setTimeout(function() {
+                var r = document.getElementById('settingsUiOpacity');
+                var v = document.getElementById('settingsUiOpacityValue');
+                if (r && v) r.addEventListener('input', function() { v.textContent = r.value + '%'; });
+            }, 50);
             DB.requestInfo(updateDbInfoPanel);
         }
 
@@ -6915,10 +7254,23 @@ html, body {
                 showToast('Please enter an application name', 'error');
                 return;
             }
-            const checks = document.querySelectorAll('.settings-completion-check:checked');
-            const chosen = [];
-            for (let i = 0; i < checks.length; i++) chosen.push(checks[i].value);
-            APP.completionColumns = chosen;
+            const multi = document.getElementById('settingsCompletionNames');
+            const chosenNames = [];
+            const seen = {};
+            if (multi) {
+                Array.prototype.forEach.call(multi.selectedOptions || [], function(o) {
+                    const k = String(o.value || '').toLowerCase();
+                    if (k && !seen[k]) { seen[k] = true; chosenNames.push(o.value); }
+                });
+            }
+            APP.completionColumnNames = chosenNames;
+            APP.completionColumns = [];
+            const opacityRange = document.getElementById('settingsUiOpacity');
+            if (opacityRange) {
+                const pct = Math.max(50, Math.min(100, parseInt(opacityRange.value, 10) || 100));
+                APP.uiOpacity = pct / 100;
+                applyUiOpacity();
+            }
 
             applyAppName(name, true);
             closeModal();
@@ -6941,6 +7293,8 @@ html, body {
             APP.activeFilters = { labels: [], assignees: [], priorities: [] };
 
             document.body.setAttribute('data-theme', APP.currentTheme);
+            APP.uiOpacity = 1;
+            applyUiOpacity();
             applyAppName(APP.appName, false);
             saveData();
 
