@@ -1,4 +1,4 @@
-# KanbanFlow
+# Hamster's Kanban
 
 Нативная канбан-доска для macOS, написанная на **Swift + AppKit + WKWebView + SQLite**.
 Интерфейс — один самодостаточный HTML-файл, а нативная оболочка даёт окно,
@@ -76,13 +76,13 @@ Electron, Node.js, менеджеры пакетов и сторонние ср�
 ## Быстрый старт
 
 ```bash
-git clone https://github.com/ilyaivonin/kanbanflow
-cd kanbanflow
+git clone https://github.com/ilyaivonin/hamsterskanban
+cd hamsterskanban
 ./macos/build.sh
-open dist/KanbanFlow.app
+open dist/Hamster's Kanban.app
 ```
 
-Сборка создаёт `dist/KanbanFlow.app`. Приложение можно перенести
+Сборка создаёт `dist/Hamster's Kanban.app`. Приложение можно перенести
 в `/Applications`, чтобы оно появилось в Launchpad.
 
 Подробности о сборке, подписи, иконке и устранении неполадок — в
@@ -96,7 +96,7 @@ open dist/KanbanFlow.app
 ├── macos/
 │   ├── main.swift           # оболочка macOS, слой SQLite и мост WebKit
 │   ├── Info.plist           # метаданные app bundle
-│   ├── build.sh             # собирает dist/KanbanFlow.app
+│   ├── build.sh             # собирает dist/Hamster's Kanban.app
 │   └── make-icon.sh         # пересоздаёт assets/AppIcon.icns
 ├── assets/
 │   ├── icon.png             # исходник иконки (квадратный PNG)
@@ -113,7 +113,7 @@ open dist/KanbanFlow.app
 Нативное приложение хранит всё в файле:
 
 ```text
-~/Library/Application Support/KanbanFlow/kanbanflow.sqlite
+~/Library/Application Support/Hamster's Kanban/hamsterskanban.sqlite
 ```
 
 Структура базы:
@@ -168,20 +168,20 @@ open dist/KanbanFlow.app
 
 ```bash
 ./macos/build.sh
-open dist/KanbanFlow.app
+open dist/Hamster's Kanban.app
 ```
 
 Чтобы запустить приложение с временной базой и не трогать реальные данные:
 
 ```bash
-KANBANFLOW_DB_PATH=/tmp/kanbanflow-dev.sqlite \
-  ./dist/KanbanFlow.app/Contents/MacOS/KanbanFlow
+KANBANFLOW_DB_PATH=/tmp/hamsterskanban-dev.sqlite \
+  ./dist/Hamster's Kanban.app/Contents/MacOS/Hamster's Kanban
 ```
 
 У нативного бинарника есть самотест базы:
 
 ```bash
-./dist/KanbanFlow.app/Contents/MacOS/KanbanFlow --selftest
+./dist/Hamster's Kanban.app/Contents/MacOS/Hamster's Kanban --selftest
 ```
 
 ## Иконка приложения
@@ -204,7 +204,7 @@ KANBANFLOW_DB_PATH=/tmp/kanbanflow-dev.sqlite \
 | --- | --- |
 | `swiftc: command not found` | Выполните `xcode-select --install` и повторите сборку |
 | macOS не открывает приложение | Правый клик по приложению → **Открыть** либо разрешите запуск в **Системные настройки → Конфиденциальность и безопасность** |
-| Отображается старая иконка | Переместите приложение или выполните `touch dist/KanbanFlow.app`: Finder кеширует иконки |
+| Отображается старая иконка | Переместите приложение или выполните `touch dist/Hamster's Kanban.app`: Finder кеширует иконки |
 | Изменения в `kanban.html` не видны | Пересоберите через `./macos/build.sh` — HTML копируется внутрь bundle |
-| Нужна чистая база | Закройте приложение и уберите `~/Library/Application Support/KanbanFlow/kanbanflow.sqlite` в сторону |
+| Нужна чистая база | Закройте приложение и уберите `~/Library/Application Support/Hamster's Kanban/hamsterskanban.sqlite` в сторону |
 

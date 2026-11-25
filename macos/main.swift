@@ -68,7 +68,7 @@ final class KanbanDatabase {
 
         if sqlite3_open(resolvedPath, &db) != SQLITE_OK {
             let message = db.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown error"
-            print("KanbanFlow: cannot open database at \(resolvedPath): \(message)")
+            print("Hamster's Kanban: cannot open database at \(resolvedPath): \(message)")
         }
 
         exec("PRAGMA journal_mode=WAL;")
@@ -92,10 +92,10 @@ final class KanbanDatabase {
         let result = sqlite3_exec(db, sql, nil, nil, &error)
         if result != SQLITE_OK {
             if let error {
-                print("KanbanFlow SQL error: \(String(cString: error))")
+                print("Hamster's Kanban SQL error: \(String(cString: error))")
                 sqlite3_free(error)
             } else {
-                print("KanbanFlow SQL error: \(errorMessage())")
+                print("Hamster's Kanban SQL error: \(errorMessage())")
             }
             return false
         }
@@ -105,7 +105,7 @@ final class KanbanDatabase {
     private func prepare(_ sql: String) -> OpaquePointer? {
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
-            print("KanbanFlow SQL prepare error: \(errorMessage()) for \(sql)")
+            print("Hamster's Kanban SQL prepare error: \(errorMessage()) for \(sql)")
             return nil
         }
         return statement
@@ -192,13 +192,13 @@ final class KanbanDatabase {
 
     func appName() -> String {
         guard let statement = prepare("SELECT value FROM settings WHERE key = 'app_name' LIMIT 1;") else {
-            return "KanbanFlow"
+            return "Hamster's Kanban"
         }
         defer { sqlite3_finalize(statement) }
         if sqlite3_step(statement) == SQLITE_ROW, let text = sqlite3_column_text(statement, 0) {
             return String(cString: text)
         }
-        return "KanbanFlow"
+        return "Hamster's Kanban"
     }
 
     func setAppName(_ name: String) {
@@ -222,7 +222,7 @@ final class KanbanDatabase {
     func saveState(json: String) {
         guard let data = json.data(using: .utf8),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-            print("KanbanFlow: refusing to save malformed state")
+            print("Hamster's Kanban: refusing to save malformed state")
             return
         }
 
@@ -243,7 +243,7 @@ final class KanbanDatabase {
         if success {
             let appName = ((root["settings"] as? [String: Any])?["appName"] as? String)
                 ?? (root["appName"] as? String)
-                ?? "KanbanFlow"
+                ?? "Hamster's Kanban"
             setAppName(appName)
         }
 
@@ -362,7 +362,7 @@ final class KanbanDatabase {
             exec("COMMIT;")
         } else {
             exec("ROLLBACK;")
-            print("KanbanFlow: database save failed, rolled back")
+            print("Hamster's Kanban: database save failed, rolled back")
         }
     }
 
@@ -449,7 +449,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         switch action {
         case "save":
             guard let state = payload as? [String: Any], let json = prettyJSONCompact(state) else {
-                print("KanbanFlow: save ignored, payload was not JSON")
+                print("Hamster's Kanban: save ignored, payload was not JSON")
                 return
             }
             database.saveState(json: json)
@@ -481,11 +481,11 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
             }
 
         case "log":
-            if let text = payload as? String { print("KanbanFlow JS: \(text)") }
-            else if let text = payload { print("KanbanFlow JS: \(text)") }
+            if let text = payload as? String { print("Hamster's Kanban JS: \(text)") }
+            else if let text = payload { print("Hamster's Kanban JS: \(text)") }
 
         default:
-            print("KanbanFlow: unknown bridge action \(action)")
+            print("Hamster's Kanban: unknown bridge action \(action)")
         }
     }
 
@@ -513,7 +513,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
 
     private func exportState(_ state: Any?, suggestedName: String) {
         guard let state, let text = prettyJSONString(from: state) else {
-            print("KanbanFlow: export failed, state was not JSON")
+            print("Hamster's Kanban: export failed, state was not JSON")
             return
         }
 
@@ -528,7 +528,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
             do {
                 try text.write(to: url, atomically: true, encoding: .utf8)
                 self?.database.recordBackup(json: text)
-                print("KanbanFlow: exported database backup to \(url.path)")
+                print("Hamster's Kanban: exported database backup to \(url.path)")
             } catch {
                 self?.showError("Could not write the backup file.", detail: error.localizedDescription)
             }
@@ -562,10 +562,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
                 }
                 self?.webView?.evaluateJavaScript("window.onNativeImportState(\(jsonStringLiteral(text)));", completionHandler: { _, error in
                     if let error {
-                        print("KanbanFlow: import JS error: \(error.localizedDescription)")
+                        print("Hamster's Kanban: import JS error: \(error.localizedDescription)")
                     }
                 })
-                print("KanbanFlow: importing backup from \(url.path)")
+                print("Hamster's Kanban: importing backup from \(url.path)")
             } catch {
                 self?.showError("Could not read the backup file.", detail: error.localizedDescription)
             }
@@ -652,7 +652,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         window.minSize = NSSize(width: 900, height: 600)
         window.contentView = webView
         window.center()
-        window.setFrameAutosaveName("KanbanFlowMainWindow")
+        window.setFrameAutosaveName("HamstersKanbanMainWindow")
         bridge.setWindow(window)
 
         buildMenu()
@@ -665,7 +665,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     private func loadInterface() {
         guard let htmlURL = Bundle.main.url(forResource: "kanban", withExtension: "html") else {
             let alert = NSAlert()
-            alert.messageText = "KanbanFlow is missing its interface"
+            alert.messageText = "Hamster's Kanban is missing its interface"
             alert.informativeText = "The kanban.html resource could not be found in the application bundle."
             alert.runModal()
             NSApp.terminate(nil)
@@ -881,11 +881,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     // MARK: WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("KanbanFlow: interface loaded")
+        print("Hamster's Kanban: interface loaded")
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("KanbanFlow: navigation failed: \(error.localizedDescription)")
+        print("Hamster's Kanban: navigation failed: \(error.localizedDescription)")
     }
 }
 

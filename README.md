@@ -1,18 +1,18 @@
-# KanbanFlow
+# Hamster's Kanban
 <div align="center">
 
-  <img src="https://github.com/user-attachments/assets/2c920851-5e5f-48d6-8228-86e9162010af" alt="KanbanFlow Logo" width="180">
+  <img src="https://github.com/user-attachments/assets/2c920851-5e5f-48d6-8228-86e9162010af" alt="Hamster's Kanban Logo" width="180">
 
   <h2>A native Kanban board for macOS.</h2>
 
   <p>Simple, lightweight, and entirely self-contained.</p>
 
   <p>
-    <a href="https://github.com/ilyaivonin/kanbanflow/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ilyaivonin/kanbanflow?display_name=tag&style=for-the-badge" alt="Latest Release">
+    <a href="https://github.com/ilyaivonin/hamsterskanban/releases/latest">
+      <img src="https://img.shields.io/github/v/release/ilyaivonin/hamsterskanban?display_name=tag&style=for-the-badge" alt="Latest Release">
     </a>
-    <a href="https://github.com/ilyaivonin/kanbanflow/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/ilyaivonin/kanbanflow?style=for-the-badge" alt="License">
+    <a href="https://github.com/ilyaivonin/hamsterskanban/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/ilyaivonin/hamsterskanban?style=for-the-badge" alt="License">
     </a>
     <img src="https://img.shields.io/badge/macOS-12%2B-black?style=for-the-badge&logo=apple" alt="macOS 12+">
     <img src="https://img.shields.io/badge/Swift-AppKit-orange?style=for-the-badge&logo=swift" alt="Swift + AppKit">
@@ -21,7 +21,7 @@
 
   <br>
 
-  <a href="https://github.com/ilyaivonin/kanbanflow/releases/latest">
+  <a href="https://github.com/ilyaivonin/hamsterskanban/releases/latest">
     <img src="https://img.shields.io/badge/DOWNLOAD-RELEASE%201.0-2ea44f?style=for-the-badge" alt="Download Release 1.0">
   </a>
 
@@ -44,7 +44,7 @@
 
 ## Architecture
 
-KanbanFlow is a hybrid macOS application.
+Hamster's Kanban is a hybrid macOS application.
 
 - **`kanban.html` — User interface.** The board, modal windows, themes, and all interaction logic are written in HTML, CSS, and JavaScript and rendered through `WKWebView`.
 - **`macos/main.swift` — Native wrapper.** AppKit creates the application window and menu bar, `WKWebView` displays the HTML interface, and native code handles SQLite, JSON file dialogs, backups, and the window title.
@@ -86,13 +86,13 @@ Electron, Node.js, package managers, and third-party runtimes are not required.
 ## Quick Start
 
 ```bash
-git clone https://github.com/ilyaivonin/kanbanflow
-cd kanbanflow
+git clone https://github.com/ilyaivonin/hamsterskanban
+cd hamsterskanban
 ./macos/build.sh
-open dist/KanbanFlow.app
+open dist/Hamster's Kanban.app
 ```
 
-The build creates `dist/KanbanFlow.app`. You can move the application to `/Applications` to make it available in Launchpad.
+The build creates `dist/Hamster's Kanban.app`. You can move the application to `/Applications` to make it available in Launchpad.
 
 For detailed build instructions, code signing, icons, and troubleshooting, see [BUILD.md](BUILD.md).
 
@@ -104,7 +104,7 @@ For detailed build instructions, code signing, icons, and troubleshooting, see [
 ├── macos/
 │   ├── main.swift           # macOS wrapper, SQLite layer, and WebKit bridge
 │   ├── Info.plist           # App bundle metadata
-│   ├── build.sh             # Builds dist/KanbanFlow.app
+│   ├── build.sh             # Builds dist/Hamster's Kanban.app
 │   └── make-icon.sh         # Recreates assets/AppIcon.icns
 ├── assets/
 │   ├── icon.png             # Icon source (square PNG)
@@ -121,7 +121,7 @@ For detailed build instructions, code signing, icons, and troubleshooting, see [
 The native application stores all data in:
 
 ```text
-~/Library/Application Support/KanbanFlow/kanbanflow.sqlite
+~/Library/Application Support/Hamster's Kanban/hamsterskanban.sqlite
 ```
 
 Database structure:
@@ -171,20 +171,20 @@ After making changes, rebuild the application to include the updated HTML in the
 
 ```bash
 ./macos/build.sh
-open dist/KanbanFlow.app
+open dist/Hamster's Kanban.app
 ```
 
 To run the application with a temporary database without touching your actual data:
 
 ```bash
-KANBANFLOW_DB_PATH=/tmp/kanbanflow-dev.sqlite \
-  ./dist/KanbanFlow.app/Contents/MacOS/KanbanFlow
+KANBANFLOW_DB_PATH=/tmp/hamsterskanban-dev.sqlite \
+  ./dist/Hamster's Kanban.app/Contents/MacOS/Hamster's Kanban
 ```
 
 The native binary also includes a database self-test:
 
 ```bash
-./dist/KanbanFlow.app/Contents/MacOS/KanbanFlow --selftest
+./dist/Hamster's Kanban.app/Contents/MacOS/Hamster's Kanban --selftest
 ```
 
 ## Application Icon
@@ -208,6 +208,6 @@ Released under the MIT License. See `LICENSE`.
 | --- | --- |
 | `swiftc: command not found` | Run `xcode-select --install` and try building again. |
 | macOS won't open the application | Right-click the application and select **Open**, or allow it under **System Settings → Privacy & Security**. |
-| The old icon is still displayed | Move the application or run `touch dist/KanbanFlow.app`. Finder caches application icons. |
+| The old icon is still displayed | Move the application or run `touch dist/Hamster's Kanban.app`. Finder caches application icons. |
 | Changes to `kanban.html` are not visible | Rebuild using `./macos/build.sh` — the HTML file is copied into the application bundle. |
-| A clean database is needed | Close the application and move `~/Library/Application Support/KanbanFlow/kanbanflow.sqlite` somewhere else. |
+| A clean database is needed | Close the application and move `~/Library/Application Support/Hamster's Kanban/hamsterskanban.sqlite` somewhere else. |

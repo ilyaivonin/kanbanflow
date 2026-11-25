@@ -5,17 +5,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>KanbanFlow</string>
+    <string>Hamster's Kanban</string>
     <key>CFBundleExecutable</key>
-    <string>KanbanFlow</string>
+    <string>HamstersKanban</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.kanbanflow.desktop</string>
+    <string>com.hamsterskanban.desktop</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>KanbanFlow</string>
+    <string>HamstersKanban</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -33,6 +33,6 @@
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>KanbanFlow</string>
+    <string>Hamster's Kanban</string>
 </dict>
 </plist>

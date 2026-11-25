@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KanbanFlow - Project Management Board</title>
+    <title>Hamster's Kanban - Project Management Board</title>
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
         :root {
@@ -3269,7 +3269,7 @@ html, body {
                     <rect x="3" y="14" width="7" height="7" rx="1" fill="currentColor" opacity="0.4"/>
                     <rect x="14" y="14" width="7" height="7" rx="1" fill="currentColor" opacity="0.2"/>
                 </svg>
-                <span class="app-name-label" id="appNameLabel">KanbanFlow</span>
+                <span class="app-name-label" id="appNameLabel">Hamster's Kanban</span>
             </div>
             <div class="board-switcher" id="boardSwitcher">
                 <button type="button" class="board-switcher-toggle" id="boardSwitcherToggle" title="Switch board" aria-haspopup="menu" aria-expanded="false">
@@ -3431,11 +3431,80 @@ html, body {
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
+        // ==================== I18N ====================
+        const I18N = {
+            en: {
+                board: 'Board', calendar: 'Calendar', projects: 'Projects', settings: 'Settings',
+                search: 'Search cards...', addColumn: 'Add Column', addCard: 'Add Card',
+                save: 'Save', cancel: 'Cancel', delete: 'Delete', close: 'Close',
+                language: 'Language', appName: 'Application name', reset: 'Reset',
+                resetSettings: 'Reset Settings', saveSettings: 'Save Settings',
+                newTask: 'New task', title: 'Title', description: 'Description',
+                completeTask: 'Complete task', completedTask: 'Completed task',
+                cloneTask: 'Clone task', completionColumns: 'Completion columns',
+                moveThisTaskTo: 'Move this task to', onlyChosen: 'Only completion column names selected earlier or in Settings are shown.',
+                selectTarget: 'Select a target column, then press Complete',
+                taskCompleted: 'Task completed', taskCloned: 'Task cloned',
+                settingsSaved: 'Settings saved to database', loaded: 'loaded successfully',
+                columnCreated: 'Column created', columnDuplicated: 'Column duplicated',
+                columnDeleted: 'Column deleted', columnOrderUpdated: 'Column order updated',
+                cardDeleted: 'Card deleted', cardUpdated: 'Card updated',
+                addChecklistItem: '+ Add checklist item', convertLines: 'Convert lines to checklist',
+                checklistHint: 'Use checkboxes below to mark progress. Subtasks update automatically.',
+                noChecklist: 'No checklist items yet. Add one with the button above or write <code>- [ ] task</code>.',
+                subtasksAuto: 'Subtasks (auto from checklist)'
+            },
+            ru: {
+                board: 'Доска', calendar: 'Календарь', projects: 'Проекты', settings: 'Настройки',
+                search: 'Поиск карточек...', addColumn: 'Добавить колонку', addCard: 'Добавить карточку',
+                save: 'Сохранить', cancel: 'Отмена', delete: 'Удалить', close: 'Закрыть',
+                language: 'Язык', appName: 'Название приложения', reset: 'Сброс',
+                resetSettings: 'Сбросить настройки', saveSettings: 'Сохранить настройки',
+                newTask: 'Новая задача', title: 'Название', description: 'Описание',
+                completeTask: 'Завершить задачу', completedTask: 'Задача завершена',
+                cloneTask: 'Клонировать задачу', completionColumns: 'Колонки завершения',
+                moveThisTaskTo: 'Переместить задачу в', onlyChosen: 'Показаны только колонки завершения, выбранные ранее или в настройках.',
+                selectTarget: 'Выберите колонку и нажмите «Complete»',
+                taskCompleted: 'Задача завершена', taskCloned: 'Задача клонирована',
+                settingsSaved: 'Настройки сохранены в базе данных', loaded: 'успешно загружено',
+                columnCreated: 'Колонка создана', columnDuplicated: 'Колонка продублирована',
+                columnDeleted: 'Колонка удалена', columnOrderUpdated: 'Порядок колонок обновлён',
+                cardDeleted: 'Карточка удалена', cardUpdated: 'Карточка обновлена',
+                addChecklistItem: '+ Добавить пункт', convertLines: 'Преобразовать строки в чеклист',
+                checklistHint: 'Отмечайте прогресс галочками ниже. Сабтаски обновляются автоматически.',
+                noChecklist: 'Пока нет пунктов. Добавьте кнопку выше или напишите <code>- [ ] задача</code>.',
+                subtasksAuto: 'Сабтаски (авто из чеклиста)'
+            }
+        };
+
+        function t(key) {
+            const lang = (APP && APP.lang) || 'en';
+            return (I18N[lang] && I18N[lang][key]) || (I18N.en && I18N.en[key]) || key;
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = APP.lang || 'en';
+            const map = {
+                'board': '[data-view="board"]',
+                'calendar': '[data-view="calendar"]',
+                'projects': '[data-view="projects"]'
+            };
+            Object.keys(map).forEach(function(key) {
+                const el = document.querySelector(map[key]);
+                if (el) el.textContent = t(key);
+            });
+            const search = document.getElementById('searchInput');
+            if (search) search.placeholder = t('search');
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) settingsBtn.title = t('settings');
+        }
+
         // ==================== APP STATE ====================
         const APP = {
             currentBoard: 'default',
             currentTheme: 'dark',
-            appName: 'KanbanFlow',
+            appName: "Hamster's Kanban",
+            lang: 'en',
             view: 'board',
             calendarCursor: null,
             searchQuery: '',
@@ -3734,7 +3803,8 @@ html, body {
                     ? parsed.currentBoard
                     : Object.keys(parsed.boards)[0];
                 APP.currentTheme = parsed.currentTheme || 'dark';
-                APP.appName = (parsed.settings && parsed.settings.appName) || parsed.appName || 'KanbanFlow';
+                APP.lang = (parsed.settings && parsed.settings.lang) || parsed.lang || 'en';
+                APP.appName = (parsed.settings && parsed.settings.appName) || parsed.appName || "Hamster's Kanban";
                 APP.completionColumns = Array.isArray(parsed.settings && parsed.settings.completionColumns)
                     ? parsed.settings.completionColumns.slice(0)
                     : (Array.isArray(parsed.completionColumns) ? parsed.completionColumns.slice(0) : []);
@@ -3770,6 +3840,7 @@ html, body {
             }
 
             document.body.setAttribute('data-theme', APP.currentTheme);
+            applyLanguage();
             applyAppName(APP.appName, false);
             saveData();
         }
@@ -3794,6 +3865,8 @@ html, body {
                     });
                 });
             });
+
+            if (!['en','ru'].includes(APP.lang)) APP.lang = 'en';
 
             // Completion targets are stored as column names (not IDs) so copied
             // columns like "Done (copy)" do not explode the list. Migrate legacy IDs.
@@ -3831,14 +3904,18 @@ html, body {
         function buildStateSnapshot() {
             return {
                 version: 2,
-                app: 'KanbanFlow',
+                app: "Hamster's Kanban",
                 boards: APP.boards,
                 boardOrder: Object.keys(APP.boards),
                 currentBoard: APP.currentBoard,
                 currentTheme: APP.currentTheme,
                 columnOrder: APP.columnOrder,
                 settings: {
-                    appName: APP.appName || 'KanbanFlow',
+                    appName: APP.appName || "Hamster's Kanban",
+                    theme: APP.currentTheme,
+                    view: APP.view,
+                    lang: APP.lang || 'en',
+                    activeFilters: APP.activeFilters,
                     completionColumns: (APP.completionColumns || []).slice(0),
                     completionColumnNames: (APP.completionColumnNames || []).slice(0),
                 },
@@ -3900,7 +3977,8 @@ html, body {
                     ? snapshot.currentBoard
                     : Object.keys(APP.boards)[0];
                 APP.currentTheme = snapshot.currentTheme || 'dark';
-                APP.appName = (snapshot.settings && snapshot.settings.appName) || snapshot.appName || 'KanbanFlow';
+                APP.lang = (snapshot.settings && snapshot.settings.lang) || snapshot.lang || APP.lang || 'en';
+                APP.appName = (snapshot.settings && snapshot.settings.appName) || snapshot.appName || "Hamster's Kanban";
                 APP.columnOrder = Array.isArray(snapshot.columnOrder) ? snapshot.columnOrder.slice(0) : [];
                 APP.completionColumns = Array.isArray(snapshot.settings && snapshot.settings.completionColumns)
                     ? snapshot.settings.completionColumns.slice(0)
@@ -3911,6 +3989,7 @@ html, body {
 
                 normalizeAllBoards();
                 document.body.setAttribute('data-theme', APP.currentTheme);
+                applyLanguage();
                 applyAppName(APP.appName, false);
                 saveData({ skipUndo: true });
 
@@ -3995,7 +4074,7 @@ html, body {
         // ==================== APP NAME ====================
 
         function applyAppName(name, persist) {
-            const clean = (name || '').trim() || 'KanbanFlow';
+            const clean = (name || '').trim() || "Hamster's Kanban";
             APP.appName = clean;
 
             const label = document.getElementById('appNameLabel');
@@ -4135,7 +4214,7 @@ html, body {
             createColumnAt(title, beforeColId);
         }
 
-        function createColumnAt(title, beforeColId) {
+        function createColumnAt(title, beforeColId, side) {
             const board = getBoard();
             const colId = 'col_' + Date.now();
             board.columns[colId] = { title, order: 0 };
@@ -4154,17 +4233,29 @@ html, body {
             const hidden = APP.columnOrder.filter(function(id) { return !board.columns[id]; });
             APP.columnOrder = visible.slice(0, insertAt).concat([colId], visible.slice(insertAt), hidden);
 
+            // If adding to the right of a divider, move that divider to the new column
+            // so the new column appears to the right of the red line.
+            if (side === 'right' && board.separators) {
+                board.separators.forEach(function(sep) {
+                    if (sep.before === beforeColId) sep.before = colId;
+                });
+            }
+
             saveData();
             renderBoard();
             showToast(`Column "${title}" created`, 'success');
         }
 
-        function showAddColumnAtModal(beforeCol) {
+        var ADD_COLUMN_SIDE = 'left';
+
+        function showAddColumnAtModal(beforeCol, side) {
             ADD_COLUMN_BEFORE = beforeCol || 'end';
+            ADD_COLUMN_SIDE = side || 'left';
 
             const body = document.getElementById('modalBody');
             const title = document.getElementById('modalTitle');
             const footer = document.getElementById('modalFooter');
+            const isRight = ADD_COLUMN_SIDE === 'right';
 
             title.textContent = 'Add Column';
             body.innerHTML = `
@@ -4172,7 +4263,7 @@ html, body {
                     <div class="detail-section-title">Column title</div>
                     <input type="text" class="detail-input" id="newColumnTitleHere" maxlength="60" placeholder="e.g. Tuesday">
                 </div>
-                <div class="detail-label">The new column is inserted to the left of the date divider.</div>
+                <div class="detail-label">${isRight ? 'The new column is inserted to the right of the date divider.' : 'The new column is inserted to the left of the date divider.'}</div>
             `;
             footer.innerHTML = '<button class="btn" onclick="closeModal()">Cancel</button>' +
                 '<button class="btn btn-primary" onclick="submitAddColumnAt()">Add Column</button>';
@@ -4189,7 +4280,7 @@ html, body {
                 return;
             }
             closeModal();
-            createColumnAt(name, ADD_COLUMN_BEFORE);
+            createColumnAt(name, ADD_COLUMN_BEFORE, ADD_COLUMN_SIDE);
         }
 
         function renameColumn(colId, newTitle) {
@@ -4753,7 +4844,7 @@ html, body {
             }
 
             normalizeAllBoards();
-            applyAppName(APP.appName || 'KanbanFlow', false);
+            applyAppName(APP.appName || "Hamster's Kanban", false);
             saveData();
             updateBoardSelect();
             renderBoard();
@@ -4779,9 +4870,11 @@ html, body {
         var ADD_COLUMN_BEFORE = 'end';
         var BOARD_SCROLL_LEFT = 0;
 
-        function renderAddColumnSpot(beforeCol) {
+        function renderAddColumnSpot(beforeCol, side) {
+            const isRight = side === 'right';
+            const label = isRight ? 'Add column to the right of this divider' : 'Add column to the left of this divider';
             return `
-                <button type="button" class="add-column-spot" onclick="showAddColumnAtModal('${beforeCol}')" title="Add a column to the left of this divider">
+                <button type="button" class="add-column-spot" onclick="showAddColumnAtModal('${beforeCol}', '${isRight ? 'right' : 'left'}')" title="${label}">
                     <span class="acs-plus">+</span>
                     <span class="acs-label">Add column</span>
                 </button>
@@ -4964,8 +5057,9 @@ html, body {
                 const colSeps = separators.filter(function(s) { return s.before === colId; });
                 if (colSeps.length > 0) {
                     colSeps.forEach(function(sep) {
-                        html += renderAddColumnSpot(sep.before);
+                        html += renderAddColumnSpot(sep.before, 'left');
                         html += renderSeparatorElement(sep);
+                        html += renderAddColumnSpot(sep.before, 'right');
                     });
                 } else if (index > 0) {
                     html += renderSeparatorHandle(colId);
@@ -5018,7 +5112,7 @@ html, body {
 
             separators.filter(function(s) { return s.before === 'end'; }).forEach(function(sep) {
                 html += renderSeparatorElement(sep);
-                html += renderAddColumnSpot('end');
+                html += renderAddColumnSpot('end', 'right');
             });
 
             html += `
@@ -7354,11 +7448,18 @@ html, body {
                 if (n && !seenNames[k]) { seenNames[k] = true; availableNames.push(n); }
             });
 
-            document.getElementById('modalTitle').textContent = 'Settings';
+            document.getElementById('modalTitle').textContent = t('settings');
             document.getElementById('modalBody').innerHTML = `
                 <div class="settings-section">
-                    <div class="settings-title">Application name</div>
-                    <input type="text" class="detail-input" id="settingsAppName" maxlength="40" value="${escapeHtml(APP.appName || 'KanbanFlow')}" placeholder="KanbanFlow">
+                    <div class="settings-title">${t('language')} / Язык</div>
+                    <select class="detail-input" id="settingsLang">
+                        <option value="en" ${APP.lang === 'en' ? 'selected' : ''}>English</option>
+                        <option value="ru" ${APP.lang === 'ru' ? 'selected' : ''}>Русский</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-title">${t('appName')}</div>
+                    <input type="text" class="detail-input" id="settingsAppName" maxlength="40" value="${escapeHtml(APP.appName || "Hamster\'s Kanban")}" placeholder="Hamster\'s Kanban">
                     <div class="settings-hint">Shown in the header, the macOS window title and exported backups.</div>
                 </div>
                 <div class="settings-section">
@@ -7375,7 +7476,7 @@ html, body {
                     <div class="settings-title">Reset</div>
                     <div class="settings-hint">Restores the default application name, dark theme, board view, search and filters. Boards, columns and cards are kept.</div>
                     <div class="settings-actions">
-                        <button class="import-export-btn" onclick="resetSettings()">Reset Settings</button>
+                        <button class="import-export-btn" onclick="resetSettings()">' + t('resetSettings') + '</button>
                     </div>
                 </div>
                 <div class="settings-section">
@@ -7391,8 +7492,8 @@ html, body {
                 </div>
             `;
             document.getElementById('modalFooter').innerHTML =
-                '<button class="btn" onclick="closeModal()">Cancel</button>' +
-                '<button class="btn btn-primary" onclick="saveSettingsModal()">Save Settings</button>';
+                '<button class="btn" onclick="closeModal()">' + t('cancel') + '</button>' +
+                '<button class="btn btn-primary" onclick="saveSettingsModal()">' + t('saveSettings') + '</button>';
 
             showModal();
             DB.requestInfo(updateDbInfoPanel);
@@ -7405,6 +7506,8 @@ html, body {
                 showToast('Please enter an application name', 'error');
                 return;
             }
+            const langEl = document.getElementById('settingsLang');
+            if (langEl && ['en','ru'].includes(langEl.value)) APP.lang = langEl.value;
             const multi = document.getElementById('settingsCompletionNames');
             const chosenNames = [];
             const seen = {};
@@ -7416,9 +7519,10 @@ html, body {
             }
             APP.completionColumnNames = chosenNames;
             APP.completionColumns = [];
+            applyLanguage();
             applyAppName(name, true);
             closeModal();
-            showToast('Settings saved to database', 'success');
+            showToast(t('settingsSaved'), 'success');
         }
 
         function resetSettings() {
@@ -7429,14 +7533,16 @@ html, body {
             );
             if (!confirmed) return;
 
-            APP.appName = 'KanbanFlow';
+            APP.appName = "Hamster's Kanban";
             APP.currentTheme = 'dark';
             APP.view = 'board';
+            APP.lang = 'en';
             APP.searchQuery = '';
             APP.calendarCursor = null;
             APP.activeFilters = { labels: [], assignees: [], priorities: [] };
 
             document.body.setAttribute('data-theme', APP.currentTheme);
+            applyLanguage();
             applyAppName(APP.appName, false);
             saveData();
 
@@ -7491,7 +7597,7 @@ html, body {
 
             body.innerHTML = `
                 <div class="db-card" style="margin-bottom:14px;">
-                    <div><strong>${escapeHtml(APP.appName || 'KanbanFlow')}</strong></div>
+                    <div><strong>${escapeHtml(APP.appName || "Hamster\'s Kanban")}</strong></div>
                     <div class="settings-hint" style="margin-top:4px;">
                         Everything is stored in the database: ${Object.keys(APP.boards).length} board(s),
                         ${countStoredCards()} card(s), ${countStoredSeparators()} divider(s).

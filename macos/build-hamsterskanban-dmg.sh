@@ -1,9 +1,9 @@
 #!/bin/bash
 # Builds a clean, example-data-only HamstersKanban.dmg.
 #
-# The demo app is a renamed copy of KanbanFlow that uses its own bundle id,
-# database and localStorage key. It never reads the production KanbanFlow
-# database, so a fresh launch always shows the standard example board.
+# The demo app uses its own bundle id, database and localStorage key.
+# It never reads the production Hamster's Kanban database, so a fresh
+# launch always shows the standard example board.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -33,20 +33,18 @@ root = pathlib.Path(sys.argv[1])
 
 edits = {
     "kanban.html": [
-        ("KanbanFlow", "HamstersKanban"),
         ("kanbanflow_data", "hamsterskanban_data"),
         ("kanbanflow_backup.json", "hamsterskanban_backup.json"),
     ],
     "macos/main.swift": [
-        ("KanbanFlow", "HamstersKanban"),
         ("KANBANFLOW_DB_PATH", "HAMSTERSKANBAN_DB_PATH"),
+        ("HamstersKanban/kanbanflow.sqlite", "HamstersKanban/hamsterskanban.sqlite"),
         ("kanbanflow.sqlite", "hamsterskanban.sqlite"),
         ("kanbanflow_backup.json", "hamsterskanban_backup.json"),
         ("kanbanflow-selftest-", "hamsterskanban-selftest-"),
     ],
     "macos/Info.plist": [
-        ("KanbanFlow", "HamstersKanban"),
-        ("com.kanbanflow.desktop", "com.hamsterskanban.desktop"),
+        ("com.hamsterskanban.desktop", "com.hamsterskanban.demo"),
     ],
 }
 
@@ -83,11 +81,11 @@ HamstersKanban — demo build / демонстрационная сборка
 
 This build starts with the standard example board only. It uses a separate
 database at ~/Library/Application Support/HamstersKanban/hamsterskanban.sqlite
-and never reads your KanbanFlow boards.
+and never reads your Hamster's Kanban boards.
 
 Эта сборка содержит только стандартную доску с примерами. Она использует
 отдельную базу ~/Library/Application Support/HamstersKanban/hamsterskanban.sqlite
-и не читает ваши доски KanbanFlow.
+и не читает ваши доски Hamster's Kanban.
 
 Drag HamstersKanban.app to Applications to install.
 Перетащите HamstersKanban.app в Applications для установки.
