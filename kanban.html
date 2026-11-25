@@ -78,12 +78,8 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            transition: background var(--transition), color var(--transition);
-        }
-
-        body > *:not(.modal-overlay):not(.toast-container):not(.date-picker-popover) {
+            transition: background var(--transition), color var(--transition), opacity var(--transition);
             opacity: var(--ui-opacity);
-            transition: opacity var(--transition);
         }
 
         /* ==================== SCROLLBAR ==================== */
@@ -1539,17 +1535,49 @@
         .card-checklist-item {
             display: flex;
             align-items: flex-start;
-            gap: 6px;
+            gap: 8px;
             font-size: 12px;
             color: var(--text-secondary);
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             cursor: pointer;
+            line-height: 1.35;
         }
 
-        .card-checklist-item input {
-            margin-top: 1px;
-            accent-color: var(--accent);
+        .card-checklist-item input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            margin-top: 0;
+            border: 1.5px solid var(--text-secondary);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.04);
             cursor: pointer;
+            position: relative;
+        }
+
+        .card-checklist-item input[type="checkbox"]:checked {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .card-checklist-item input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 1px;
+            width: 4px;
+            height: 8px;
+            border: solid #07140f;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .card-checklist-text {
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
         }
 
         .card-checklist-item.done span {
@@ -1583,6 +1611,60 @@
         .desc-tool-btn:hover {
             border-color: var(--accent);
             color: var(--text-primary);
+        }
+
+        .detail-checklist-editor {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255,255,255,0.02);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .detail-checklist-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .detail-checklist-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            accent-color: var(--success);
+            cursor: pointer;
+        }
+
+        .detail-checklist-row input[type="text"] {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        .detail-checklist-row.done input[type="text"] {
+            text-decoration: line-through;
+            opacity: 0.65;
+        }
+
+        .detail-checklist-remove {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 2px 4px;
+        }
+
+        .detail-checklist-remove:hover {
+            color: var(--danger);
         }
 
         .card-meta {
@@ -1911,7 +1993,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,calc(0.45 * var(--ui-opacity) + 0.15));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -4716,6 +4798,7 @@ html, body {
         // ==================== RENDERING ====================
         var SEPARATOR_EDIT = { id: null, before: 'end' };
         var ADD_COLUMN_BEFORE = 'end';
+        var BOARD_SCROLL_LEFT = 0;
 
         function renderAddColumnSpot(beforeCol) {
             return `
@@ -4870,6 +4953,8 @@ html, body {
         }
 
         function renderBoard() {
+            const container = document.getElementById('boardContainer');
+            if (container) BOARD_SCROLL_LEFT = container.scrollLeft || 0;
             renderBoardContent();
             if (APP.view === 'calendar') renderCalendar();
             else if (APP.view === 'projects') renderProjects();
@@ -4987,6 +5072,16 @@ html, body {
 
             setupDragAndDrop();
             setupTouchCardDrag();
+            restoreBoardScroll();
+        }
+
+        function restoreBoardScroll() {
+            const container = document.getElementById('boardContainer');
+            if (!container) return;
+            requestAnimationFrame(function() {
+                const max = Math.max(0, container.scrollWidth - container.clientWidth);
+                container.scrollLeft = Math.min(BOARD_SCROLL_LEFT || 0, max);
+            });
         }
 
         function parseChecklist(text) {
@@ -5045,14 +5140,15 @@ html, body {
                 }
                 return '';
             }
-            const max = 4;
+            const max = 5;
             const items = parsed.items.slice(0, max);
             const more = parsed.items.length - items.length;
             return `<div class="card-checklist" onclick="event.stopPropagation()">
                 ${items.map(function(item) {
-                    return `<label class="card-checklist-item ${item.checked ? 'done' : ''}">
+                    const safeText = escapeHtml(item.text || 'Item');
+                    return `<label class="card-checklist-item ${item.checked ? 'done' : ''}" title="${safeText}">
                         <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleChecklistItem('${card.id}', ${item.index})">
-                        <span>${escapeHtml(truncate(item.text, 40) || 'Item')}</span>
+                        <span class="card-checklist-text">${safeText}</span>
                     </label>`;
                 }).join('')}
                 ${more > 0 ? `<div class="card-checklist-more">+${more} more…</div>` : ''}
@@ -6306,9 +6402,28 @@ html, body {
             if (col.dataset.column === APP.draggingColumn) return;
 
             const rect = col.getBoundingClientRect();
-            const before = e.clientX < rect.left + rect.width / 2;
+            const ratio = (e.clientX - rect.left) / Math.max(1, rect.width);
+
             document.querySelectorAll('.column').forEach(function(c) { c.classList.remove('dragging-over'); });
             document.querySelectorAll('.date-separator.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+
+            // If the cursor is near the left edge of a column that has a separator
+            // before it, treat the left zone as "left of the red separator line".
+            const board = getBoard();
+            const seps = (board && board.separators ? board.separators : []).filter(function(s) { return s.before === col.dataset.column; });
+            if (seps.length > 0 && ratio < 0.22) {
+                let el = col.previousElementSibling;
+                while (el && !el.classList.contains('date-separator') && !el.classList.contains('column')) el = el.previousElementSibling;
+                if (el && el.classList.contains('date-separator')) {
+                    el.classList.add('drop-target');
+                    el.dataset.dropBefore = 'true';
+                    return;
+                }
+            }
+            // If cursor is near right edge and next sibling is a separator with before='end' or before next column
+            // (separators render before columns, so right edge case is handled by next column's left edge; skip)
+
+            const before = ratio < 0.5;
             col.classList.add('dragging-over');
             col.dataset.dropBefore = before ? 'true' : 'false';
         }
@@ -6593,10 +6708,12 @@ html, body {
                 <div class="detail-section">
                     <div class="detail-label">Description</div>
                     <div class="desc-toolbar">
-                        <button type="button" class="desc-tool-btn" onclick="addChecklistLine('detailDesc')">+ Checklist item</button>
-                        <span class="settings-hint" style="margin:0;">Each line becomes a checklist item with a checkbox.</span>
+                        <button type="button" class="desc-tool-btn" onclick="addChecklistLine('detailDesc')">+ Add checklist item</button>
+                        <button type="button" class="desc-tool-btn" onclick="convertDescToChecklist('detailDesc')">Convert lines to checklist</button>
                     </div>
-                    <textarea class="detail-textarea" id="detailDesc" placeholder="- [ ] First task&#10;- [ ] Second task">${escapeHtml(card.description || '')}</textarea>
+                    <div class="settings-hint" style="margin:0 0 8px;">Use checkboxes below to mark progress. Subtasks update automatically.</div>
+                    <div id="detailChecklistEditor" class="detail-checklist-editor"></div>
+                    <textarea class="detail-textarea" id="detailDesc" placeholder="- [ ] First task&#10;- [ ] Second task" style="margin-top:8px;">${escapeHtml(card.description || '')}</textarea>
                 </div>
                 <div class="detail-row">
                     <div class="detail-field">
@@ -6661,15 +6778,10 @@ html, body {
             showModal();
             setTimeout(function() {
                 var ta = document.getElementById('detailDesc');
-                var info = document.getElementById('detailSubtasksInfo');
-                if (ta && info) {
-                    var update = function() {
-                        var s = syncCardChecklist({ description: ta.value, subtasks: 0, subtasksTotal: 0 });
-                        info.textContent = s.subtasks + '/' + s.subtasksTotal;
-                    };
-                    ta.addEventListener('input', update);
-                    update();
+                if (ta) {
+                    ta.addEventListener('input', function() { renderDetailChecklistEditor(); });
                 }
+                renderDetailChecklistEditor();
             }, 50);
         }
 
@@ -6723,6 +6835,79 @@ html, body {
             ta.value = val + prefix + '- [ ] ';
             ta.focus();
             ta.selectionStart = ta.selectionEnd = ta.value.length;
+            renderDetailChecklistEditor();
+        }
+
+        function convertDescToChecklist(textareaId) {
+            const ta = document.getElementById(textareaId);
+            if (!ta) return;
+            const lines = String(ta.value || '').split('\n');
+            ta.value = lines.map(function(line) {
+                if (!line.trim()) return line;
+                if (/^\s*[-*]\s*\[( |x|X)\]\s*/.test(line)) return line;
+                return '- [ ] ' + line.replace(/^\s*[-*]\s*/, '');
+            }).join('\n');
+            renderDetailChecklistEditor();
+        }
+
+        function renderDetailChecklistEditor() {
+            const ta = document.getElementById('detailDesc');
+            const host = document.getElementById('detailChecklistEditor');
+            const info = document.getElementById('detailSubtasksInfo');
+            if (!ta || !host) return;
+            const parsed = parseChecklist(ta.value || '');
+            if (parsed.items.length === 0) {
+                host.innerHTML = '<div class="settings-hint" style="margin:0;">No checklist items yet. Add one with the button above or write <code>- [ ] task</code>.</div>';
+            } else {
+                host.innerHTML = parsed.items.map(function(item, idx) {
+                    return `<div class="detail-checklist-row ${item.checked ? 'done' : ''}">
+                        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleDetailChecklistItem(${item.index}, this.checked)">
+                        <input type="text" value="${escapeHtml(item.text)}" oninput="updateDetailChecklistText(${item.index}, this.value)">
+                        <button type="button" class="detail-checklist-remove" onclick="removeDetailChecklistItem(${item.index})" title="Remove">×</button>
+                    </div>`;
+                }).join('');
+            }
+            if (info) {
+                const s = syncCardChecklist({ description: ta.value, subtasks: 0, subtasksTotal: 0 });
+                info.textContent = s.subtasks + '/' + s.subtasksTotal;
+            }
+        }
+
+        function toggleDetailChecklistItem(lineIndex, checked) {
+            const ta = document.getElementById('detailDesc');
+            if (!ta) return;
+            const lines = String(ta.value || '').split('\n');
+            const line = lines[lineIndex];
+            const m = line && line.match(/^(\s*[-*]\s*\[)( |x|X)(\]\s*.*)$/);
+            if (!m) return;
+            lines[lineIndex] = m[1] + (checked ? 'x' : ' ') + m[3];
+            ta.value = lines.join('\n');
+            renderDetailChecklistEditor();
+        }
+
+        function updateDetailChecklistText(lineIndex, text) {
+            const ta = document.getElementById('detailDesc');
+            if (!ta) return;
+            const lines = String(ta.value || '').split('\n');
+            const line = lines[lineIndex];
+            const m = line && line.match(/^(\s*[-*]\s*\[)( |x|X)(\]\s*)(.*)$/);
+            if (!m) return;
+            lines[lineIndex] = m[1] + m[2] + m[3] + text;
+            ta.value = lines.join('\n');
+            const info = document.getElementById('detailSubtasksInfo');
+            if (info) {
+                const s = syncCardChecklist({ description: ta.value, subtasks: 0, subtasksTotal: 0 });
+                info.textContent = s.subtasks + '/' + s.subtasksTotal;
+            }
+        }
+
+        function removeDetailChecklistItem(lineIndex) {
+            const ta = document.getElementById('detailDesc');
+            if (!ta) return;
+            const lines = String(ta.value || '').split('\n');
+            lines.splice(lineIndex, 1);
+            ta.value = lines.join('\n');
+            renderDetailChecklistEditor();
         }
 
         function showModal() {
