@@ -21,7 +21,6 @@
             --info: #4a90d9;
             --border: rgba(255,255,255,0.08);
             --shadow: rgba(0,0,0,0.3);
-            --ui-opacity: 1;
             --column-radius: 10px;
             --card-radius: 8px;
             --transition: 0.3s ease;
@@ -78,8 +77,7 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            transition: background var(--transition), color var(--transition), opacity var(--transition);
-            opacity: var(--ui-opacity);
+            transition: background var(--transition), color var(--transition);
         }
 
         /* ==================== SCROLLBAR ==================== */
@@ -1993,7 +1991,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,calc(0.45 * var(--ui-opacity) + 0.15));
+            background: rgba(0,0,0,0.6);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3451,7 +3449,6 @@ html, body {
             columnOrder: ['todo', 'progress', 'review', 'done'],
             completionColumns: [],
             completionColumnNames: [],
-            uiOpacity: 1,
             boards: {}
         };
 
@@ -3700,7 +3697,6 @@ html, body {
         // ==================== INITIALIZATION ====================
         function init() {
             loadData();
-            applyUiOpacity();
             renderBoard();
             setupEventListeners();
             setupKeyboardShortcuts();
@@ -3745,9 +3741,6 @@ html, body {
                 APP.completionColumnNames = Array.isArray(parsed.settings && parsed.settings.completionColumnNames)
                     ? parsed.settings.completionColumnNames.slice(0)
                     : (Array.isArray(parsed.completionColumnNames) ? parsed.completionColumnNames.slice(0) : []);
-                APP.uiOpacity = (parsed.settings && typeof parsed.settings.uiOpacity === 'number')
-                    ? parsed.settings.uiOpacity
-                    : (typeof parsed.uiOpacity === 'number' ? parsed.uiOpacity : 1);
 
                 if (Array.isArray(parsed.columnOrder) && parsed.columnOrder.length) {
                     const known = {};
@@ -3777,7 +3770,6 @@ html, body {
             }
 
             document.body.setAttribute('data-theme', APP.currentTheme);
-            applyUiOpacity();
             applyAppName(APP.appName, false);
             saveData();
         }
@@ -3834,8 +3826,6 @@ html, body {
             APP.completionColumnNames = deduped;
             // Keep legacy IDs in sync for old code paths / backups.
             APP.completionColumns = [];
-            if (APP.uiOpacity === undefined || APP.uiOpacity === null || isNaN(APP.uiOpacity)) APP.uiOpacity = 1;
-            APP.uiOpacity = Math.max(0.5, Math.min(1, Number(APP.uiOpacity)));
         }
 
         function buildStateSnapshot() {
@@ -3851,7 +3841,6 @@ html, body {
                     appName: APP.appName || 'KanbanFlow',
                     completionColumns: (APP.completionColumns || []).slice(0),
                     completionColumnNames: (APP.completionColumnNames || []).slice(0),
-                    uiOpacity: typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1
                 },
                 lastModified: new Date().toISOString()
             };
@@ -3919,9 +3908,6 @@ html, body {
                 APP.completionColumnNames = Array.isArray(snapshot.settings && snapshot.settings.completionColumnNames)
                     ? snapshot.settings.completionColumnNames.slice(0)
                     : (Array.isArray(snapshot.completionColumnNames) ? snapshot.completionColumnNames.slice(0) : []);
-                APP.uiOpacity = (snapshot.settings && typeof snapshot.settings.uiOpacity === 'number')
-                    ? snapshot.settings.uiOpacity
-                    : (typeof snapshot.uiOpacity === 'number' ? snapshot.uiOpacity : 1);
 
                 normalizeAllBoards();
                 document.body.setAttribute('data-theme', APP.currentTheme);
@@ -4007,11 +3993,6 @@ html, body {
         }
 
         // ==================== APP NAME ====================
-        function applyUiOpacity() {
-            const v = Math.max(0.5, Math.min(1, Number(APP.uiOpacity) || 1));
-            APP.uiOpacity = v;
-            document.documentElement.style.setProperty('--ui-opacity', String(v));
-        }
 
         function applyAppName(name, persist) {
             const clean = (name || '').trim() || 'KanbanFlow';
@@ -4756,8 +4737,6 @@ html, body {
                 APP.completionColumnNames = [];
             }
 
-            if (state.settings && typeof state.settings.uiOpacity === 'number') APP.uiOpacity = state.settings.uiOpacity;
-            else if (typeof state.uiOpacity === 'number') APP.uiOpacity = state.uiOpacity;
 
             if (Array.isArray(state.columnOrder)) {
                 const known = {};
@@ -7383,14 +7362,6 @@ html, body {
                     <div class="settings-hint">Shown in the header, the macOS window title and exported backups.</div>
                 </div>
                 <div class="settings-section">
-                    <div class="settings-title">Interface transparency</div>
-                    <div class="settings-hint">Adjust overall UI opacity. 100% is fully opaque.</div>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <input type="range" class="detail-input" id="settingsUiOpacity" min="50" max="100" step="1" value="${Math.round((typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1) * 100)}" style="flex:1;">
-                        <span id="settingsUiOpacityValue" style="min-width:44px;font-size:12px;color:var(--text-secondary);">${Math.round((typeof APP.uiOpacity === 'number' ? APP.uiOpacity : 1) * 100)}%</span>
-                    </div>
-                </div>
-                <div class="settings-section">
                     <div class="settings-title">Completion columns</div>
                     <div class="settings-hint">Column names a finished task can be moved to (e.g. Done, Undone). Same-named copied columns count as one option.</div>
                     ${availableNames.length
@@ -7424,11 +7395,6 @@ html, body {
                 '<button class="btn btn-primary" onclick="saveSettingsModal()">Save Settings</button>';
 
             showModal();
-            setTimeout(function() {
-                var r = document.getElementById('settingsUiOpacity');
-                var v = document.getElementById('settingsUiOpacityValue');
-                if (r && v) r.addEventListener('input', function() { v.textContent = r.value + '%'; });
-            }, 50);
             DB.requestInfo(updateDbInfoPanel);
         }
 
@@ -7450,13 +7416,6 @@ html, body {
             }
             APP.completionColumnNames = chosenNames;
             APP.completionColumns = [];
-            const opacityRange = document.getElementById('settingsUiOpacity');
-            if (opacityRange) {
-                const pct = Math.max(50, Math.min(100, parseInt(opacityRange.value, 10) || 100));
-                APP.uiOpacity = pct / 100;
-                applyUiOpacity();
-            }
-
             applyAppName(name, true);
             closeModal();
             showToast('Settings saved to database', 'success');
@@ -7478,8 +7437,6 @@ html, body {
             APP.activeFilters = { labels: [], assignees: [], priorities: [] };
 
             document.body.setAttribute('data-theme', APP.currentTheme);
-            APP.uiOpacity = 1;
-            applyUiOpacity();
             applyAppName(APP.appName, false);
             saveData();
 
